@@ -2,6 +2,8 @@ clc
 clearvars
 close all
 
+rng(2021)
+
 load subcatchments
 
 COLS = ["#ff595e", "#ff924c", "#ffca3a", "#8ac926", "#1982c4", "#6a4c93"];
@@ -105,73 +107,16 @@ for sc = 1:SC.nNodes; M(sc,sc) = LOC(sc); end
 figure()
 imagesc(M)
 
-MF = M*(Nf.*hf);
 
-figure()
-image(assignSC(MSC,MF)','CDataMapping','scaled')
-set(gca,'YDir','normal')
-hold on
-title('Fish quota')
-for i = 1:FD.nNodes
-    if i ~= FD.outlet
-        if (FD.A(i)>=thrA && ...
-                abs(FD.X(i)-FD.X(FD.downNode(i)))<=cellsize && ...
-                abs(FD.Y(i)-FD.Y(FD.downNode(i)))<=cellsize)
-            line([FD.X(i) FD.X(FD.downNode(i))],...
-                [FD.Y(i) FD.Y(FD.downNode(i))],...
-                'linewidth', 0.5+4.5*sqrt(FD.A(i)/(FD.nNodes*cellsize^2)),...
-                'color','white')
-        end
-    end
-end
-
-%% snail contamination
-bmax = 5e-9;
-S10H = (log10(P)-mean(log10(P)))/std(log10(P));
-% S10H = (P-mean(P))/std(P);
-
-syms a b
-E = [1-1/(1+a+exp(-b*(log10(1000)-mean(log10(P)))/std(log10(P))))==0.9,...
-    1-1/(1+a+exp(-b*(log10(10000)-mean(log10(P)))/std(log10(P))))==...
-    0.1*(1-1/(1+a+exp(-b*(log10(1000)-mean(log10(P)))/std(log10(P)))))];
-
-% E = [1-1./(1+a+exp(-b*(2000-mean(P))/std(P)))==0.9,...
-%     1-1./(1+a+exp(-b*(10000-mean(P))/std(P)))==...
-%     0.1*(1-1./(1+a+exp(-b*(1000-mean(P))/std(P))))];
-
-
-S = solve(E,a,b);
-
-beta = bmax - (1-1./(1+S.a+exp(-S.b*S10H)));
-figure()
-scatter(P,beta)
-set(gca,'XScale','log')
-
-figure()
-
-image(assignSC(MSC,beta)','CDataMapping','scaled')
-set(gca,'YDir','normal')
-hold on
-title('Snail exposure')
-for i = 1:FD.nNodes
-    if i ~= FD.outlet
-        if (FD.A(i)>=thrA && ...
-                abs(FD.X(i)-FD.X(FD.downNode(i)))<=cellsize && ...
-                abs(FD.Y(i)-FD.Y(FD.downNode(i)))<=cellsize)
-            line([FD.X(i) FD.X(FD.downNode(i))],...
-                [FD.Y(i) FD.Y(FD.downNode(i))],...
-                'linewidth', 0.5+4.5*sqrt(FD.A(i)/(FD.nNodes*cellsize^2)),...
-                'color','white')
-        end
-    end
-end
-colorbar
 
 %% HYDROLOGICAL CONNECTIVITY
 W = zeros(SC.nNodes,SC.nNodes);
+W2 = zeros(SC.nNodes,SC.nNodes);
 for nn = 1:SC.nNodes
     temp = find(downNode==nn);
     W(nn,temp) = 1;
+    W2(nn,temp) = 1;
+    W2(temp,nn) = 1;
 end
 
 
@@ -188,22 +133,26 @@ par.mu_H = 1/365/10;
 par.mu_S = 1/365;
 par.mu_F = 1/365/2.5;
 
-par.mS = 1;
+par.mS = 0.02;
+par.mF = 0;
 
 %define setup
 setup.nNodes = SC.nNodes;
 setup.Cf = hf;
 setup.W = W;
-setup.M = M;
+setup.W2 = W2;
+setup.M = eye(SC.nNodes);
 setup.H = P';
 setup.Nf = Nf;
 setup.Ns = 20000*ones(SC.nNodes,1);
 
-Time = 1:365;
+Time = 1:10000;
 
 %initial solution
 y0=zeros(3,SC.nNodes);
-y0(1,3)=0.5; %initial infected in node 3
+[a, b, c] = EE_OPI(par,setup,3);
+y0(1:3,3) = [a; b; c];
+%y0(1,253)=0; %initial infected in node 3
 
 y = model(Time,par,setup,y0);
 
@@ -211,9 +160,33 @@ WH = y(:,1:3:end);
 %%
 figure()
 imagesc(assignSC(MSC,WH(end,:))')
+set(gca,'YDir','normal')
+drawborders(MSC)
+colorbar
+for i = 1:FD.nNodes
+    if i ~= FD.outlet
+        if (FD.A(i)>=thrA && ...
+                abs(FD.X(i)-FD.X(FD.downNode(i)))<=cellsize && ...
+                abs(FD.Y(i)-FD.Y(FD.downNode(i)))<=cellsize)
+            line([FD.X(i) FD.X(FD.downNode(i))],...
+                [FD.Y(i) FD.Y(FD.downNode(i))],...
+                'linewidth', 0.5+4.5*sqrt(FD.A(i)/(FD.nNodes*cellsize^2)),...
+                'color','white')
+        end
+    end
+end
 
-%animate_results(y,MSC)
+%%
+to_plot = [A WH'];
+to_plot = sortrows(to_plot,1);
 
+WHP = to_plot(:,2:end);
+
+[xx,yy] = meshgrid(sort(A),Time);
+
+shading interp
+figure()
+surf(xx,yy,WHP','edgecolor','none')
 %%
 
 function M = assignSC(MSC,X)

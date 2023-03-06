@@ -105,67 +105,7 @@ for sc = 1:SC.nNodes; M(sc,sc) = LOC(sc); end
 figure()
 imagesc(M)
 
-MF = M*(Nf.*hf);
 
-figure()
-image(assignSC(MSC,MF)','CDataMapping','scaled')
-set(gca,'YDir','normal')
-hold on
-title('Fish quota')
-for i = 1:FD.nNodes
-    if i ~= FD.outlet
-        if (FD.A(i)>=thrA && ...
-                abs(FD.X(i)-FD.X(FD.downNode(i)))<=cellsize && ...
-                abs(FD.Y(i)-FD.Y(FD.downNode(i)))<=cellsize)
-            line([FD.X(i) FD.X(FD.downNode(i))],...
-                [FD.Y(i) FD.Y(FD.downNode(i))],...
-                'linewidth', 0.5+4.5*sqrt(FD.A(i)/(FD.nNodes*cellsize^2)),...
-                'color','white')
-        end
-    end
-end
-
-%% snail contamination
-bmax = 5e-9;
-S10H = (log10(P)-mean(log10(P)))/std(log10(P));
-% S10H = (P-mean(P))/std(P);
-
-syms a b
-E = [1-1/(1+a+exp(-b*(log10(1000)-mean(log10(P)))/std(log10(P))))==0.9,...
-    1-1/(1+a+exp(-b*(log10(10000)-mean(log10(P)))/std(log10(P))))==...
-    0.1*(1-1/(1+a+exp(-b*(log10(1000)-mean(log10(P)))/std(log10(P)))))];
-
-% E = [1-1./(1+a+exp(-b*(2000-mean(P))/std(P)))==0.9,...
-%     1-1./(1+a+exp(-b*(10000-mean(P))/std(P)))==...
-%     0.1*(1-1./(1+a+exp(-b*(1000-mean(P))/std(P))))];
-
-
-S = solve(E,a,b);
-
-beta = bmax - (1-1./(1+S.a+exp(-S.b*S10H)));
-figure()
-scatter(P,beta)
-set(gca,'XScale','log')
-
-figure()
-
-image(assignSC(MSC,beta)','CDataMapping','scaled')
-set(gca,'YDir','normal')
-hold on
-title('Snail exposure')
-for i = 1:FD.nNodes
-    if i ~= FD.outlet
-        if (FD.A(i)>=thrA && ...
-                abs(FD.X(i)-FD.X(FD.downNode(i)))<=cellsize && ...
-                abs(FD.Y(i)-FD.Y(FD.downNode(i)))<=cellsize)
-            line([FD.X(i) FD.X(FD.downNode(i))],...
-                [FD.Y(i) FD.Y(FD.downNode(i))],...
-                'linewidth', 0.5+4.5*sqrt(FD.A(i)/(FD.nNodes*cellsize^2)),...
-                'color','white')
-        end
-    end
-end
-colorbar
 
 %% HYDROLOGICAL CONNECTIVITY
 W = zeros(SC.nNodes,SC.nNodes);
@@ -181,7 +121,7 @@ end
 %% EPIMODEL
 % define parameters
 par.beta_FH = 4.898e-5; 
-par.beta_HS = 3.053e-6;
+par.beta_HS = 3.053e-5;
 par.beta_SF = 3.477e-5;
 
 par.mu_H = 1/365/10;
@@ -199,7 +139,7 @@ setup.H = P';
 setup.Nf = Nf;
 setup.Ns = 20000*ones(SC.nNodes,1);
 
-Time = 1:365;
+Time = 1:200;
 
 %initial solution
 y0=zeros(3,SC.nNodes);
