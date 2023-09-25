@@ -35,27 +35,32 @@ setup.nNodes = OCN.nNodes;
 
 %% TEST DOWNSTREAM ONLY
 
-par.lambda_FD = 0.1;
-par.lambda_FU = 0;
+par.lambda_FD = 0.01;
+par.lambda_FU = 0;%0.005;
 
-Times = [1, 365:365:365*10];
+Times = [365:365:365*10];
+
+Times_Map = 365*[182/365 1 2 4 7 10];
 colorMap_IN = [linspace(016/256, 179/256,11); ...
     linspace(101/256, 021/256,11); ...
     linspace(171/256, 041/256,11)]';
 
-
+colorMap_MP = [ones(256,1)';linspace(1,0,256);linspace(1,0,256)]';
 
 y = model_ODE(Time,par,setup,y0');
 WH = y(:,1:5:end);
 
+%WH(:,6) = NaN;
+
 figure
-for tt = 1:length(Times)-1
-        subplot(5,2,tt)
+for tt = 1:length(Times_Map)
+        subplot(3,2,tt)
         draw_OCN(OCN,WH(Times(tt+1),:)','Borders_Color','black')
+
         set(gca,'ColorScale','log')
         colorbar
         clim([1e-5 5e6]);
-        colormap(colorMap_IN)
+        colormap(colorMap_MP)
         colorbar( 'off' ) 
 end
 
@@ -66,7 +71,7 @@ for i = 1:length(Times)
     ind = Time==Times(i);
     MTR = [MTR;WH(ind,:)];
 end
-MTR =MTR';
+MTR = MTR';
 
 
 idx_delete = find(MTR(:,end)==0);
@@ -74,9 +79,15 @@ MTR(idx_delete,:) = [];
 
 MTR = sortrows(MTR);
 
+
+
 figure();
 hold on
 for tt = 1:length(Times)
-    semilogy(MTR(:,1),MTR(:,tt+1),'color',colorMap_IN(tt,:))
+    plot(MTR(:,1)/1000,MTR(:,tt+1),'color',colorMap_IN(tt,:),...
+        'linestyle','-','marker','*','linewidth',1)
 end
-
+set(gca,'Yscale','log')
+xlabel('Distance to first infected node [km]')
+ylabel('I^H')
+legend(num2str(Times'/365))

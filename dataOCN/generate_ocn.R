@@ -27,7 +27,11 @@ writeMat("OCN_C.mat", CTC = OCN$FD$toSC, X = OCN$FD$X, Y = OCN$FD$Y,
          outlet = OCN$FD$outlet,
          R_length = OCN$AG$leng, R_width = OCN$AG$width, R_depth = OCN$AG$depth,
          cellsize = cellsize,
-         FD_width = OCN$RN$width,FD_depth = OCN$RN$depth)
+         FD_width = OCN$RN$width,FD_depth = OCN$RN$depth,
+         DSU = as.matrix(OCN$AG$downstreamLengthUnconnected), DSC = as.matrix(OCN$AG$downstreamPathLength))
+
+
+
 
 
 #save("OCN_C.rda")

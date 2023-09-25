@@ -1,5 +1,7 @@
 function y = model_ODE(Time,par,setup,y0)
 
+    node_out = find(sum(W,1)==0);
+    outlet = zeros()
     y=odemodel(par,...
         setup.nNodes,... #number of nodes
         setup.H,... #human population
@@ -9,6 +11,7 @@ function y = model_ODE(Time,par,setup,y0)
         setup.V,... #local volumes
         setup.W,... #hydrological connectivity
         setup.chi,...#fish catch rate
+        outlet,...#allowing release outside of the system
         Time,...    
         y0);
         
@@ -32,8 +35,10 @@ function y = model_ODE(Time,par,setup,y0)
                 warning('There are nans')
             end
 
-            P2 = (W*(y(2:5:end).*V))./V - sum(W,2).*y(2:5:end);
-(W*(y(2:5:end).*V))./V
+            %P2 = (W*(y(2:5:end).*V))./V - sum(W,1)'.*y(2:5:end);
+        
+            %y(2:5:end) 
+%(W*(y(2:5:end).*V))./V
 
             P3 = p.lambda_FU*W'*y(4:5:end) + p.lambda_FD*W*y(4:5:end) ...
                - (p.lambda_FD*sum(W,1)' + p.lambda_FU*sum(W,2)).*y(4:5:end);
@@ -55,9 +60,12 @@ function y = model_ODE(Time,par,setup,y0)
             
 
                  
-            dy(2:5:end) = p.rho_E * H .* y(1:5:end)./(p.omega+y(1:5:end))./V ...
-                + p.lambda_ED * P2 - (p.mu_E + p.beta_E * S./V).*y(2:5:end);
+            % dy(2:5:end) = p.rho_E * H .* y(1:5:end)./(p.omega+y(1:5:end))./V ...
+            %     + p.lambda_ED * P2 - (p.mu_E + p.beta_E * S./V).*y(2:5:end);
 
+            dy(2:5:end) = p.rho_E * H .* y(1:5:end)./(p.omega+y(1:5:end))./V ...
+                - (p.mu_E + p.beta_E * S./V).*y(2:5:end);
+% f
             dy(isnan(dy))=0; % because the volume is 0 in a few instances
             dy(3:5:end) = p.beta_E*(1-y(3:5:end)).*y(2:5:end) - p.mu_S*y(3:5:end);
 

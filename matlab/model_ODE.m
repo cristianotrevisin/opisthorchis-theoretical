@@ -1,7 +1,7 @@
 function y = model_ODE(Time,par,setup,y0)
 
-    node_out = find(sum(W,1)==0);
-    
+    %node_out = find(sum(W,1)==0);
+    outlet = zeros(setup.nNodes,1); %outlet(sum(setup.W,1)==0)=1;
     y=odemodel(par,...
         setup.nNodes,... #number of nodes
         setup.H,... #human population
@@ -17,7 +17,7 @@ function y = model_ODE(Time,par,setup,y0)
         
     %%% ODE PART
     
-    function y = odemodel(p,nNodes,H,S,KF,T,V,W,chi,tspan,y0)
+    function y = odemodel(p,nNodes,H,S,KF,T,V,W,chi,outlet,tspan,y0)
 
         [~,y]=ode45(@eqs,tspan,y0);
         
@@ -41,11 +41,11 @@ function y = model_ODE(Time,par,setup,y0)
 %(W*(y(2:5:end).*V))./V
 
             P3 = p.lambda_FU*W'*y(4:5:end) + p.lambda_FD*W*y(4:5:end) ...
-               - (p.lambda_FD*sum(W,1)' + p.lambda_FU*sum(W,2)).*y(4:5:end);
+               - (p.lambda_FD*(sum(W,1)'+outlet) + p.lambda_FU*sum(W,2)).*y(4:5:end);
 
             P4 = p.lambda_FU*W'*(y(4:5:end).*y(5:5:end))./y(4:5:end) ...
                + p.lambda_FD*W*(y(4:5:end).*y(5:5:end))./y(4:5:end) ...
-               - (p.lambda_FD*sum(W,1)' + p.lambda_FU*sum(W,2)).*y(5:5:end);
+               - (p.lambda_FD*(sum(W,1)'+outlet) + p.lambda_FU*sum(W,2)).*y(5:5:end);
 
             P4(isnan(P4)) = 0;
             dy(1:5:end) = p.alpha_M*P1./H - (p.mu_H+p.mu_W+p.gamma)*y(1:5:end);
