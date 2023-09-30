@@ -2,107 +2,143 @@
 
 
 clc; close all; clearvars;
-% read OCN
-
-OCN = build_OCN("OCN_A.mat");
-% Add attributes
-OCN.thrA = 30*10000*10000; 
-
 
 par = common_parameters();
-par.dF = 10;
-par.dS = 30;
-par.c = 3.0280e-08;
+Time = 1:25*365;
+Ds = [1e4 5e4 1e5 5e5];
 
-par.D = 100000;
+for ocnmap = 1:3
+    if ocnmap == 1
+        OCN = build_OCN("OCN_A.mat",30*10000*10000);
+        sd = 3108;
+        WH1_RA = zeros(length(Time),OCN.nNodes,length(Ds));
+        WH1_DA = zeros(length(Time),OCN.nNodes,length(Ds));
+    elseif ocnmap == 2
+        OCN = build_OCN("OCN_B.mat",30*10000*10000);
+        sd = 2507;
+        WH2_RA = zeros(length(Time),OCN.nNodes,length(Ds));
+        WH2_DA = zeros(length(Time),OCN.nNodes,length(Ds));
+    elseif ocnmap == 3
+        OCN = build_OCN("OCN_C.mat",30*10000*10000);
+        sd = 0808;
+        WH3_RA = zeros(length(Time),OCN.nNodes,length(Ds));
+        WH3_DA = zeros(length(Time),OCN.nNodes,length(Ds));
+    end
 
-[setup] = build_setup(OCN,par,33*800*1000,'seed',3108);
-% Add parameter after volume
-betaHS = 9.16e-11;
-par.beta_E = betaHS*mean(setup.V)*par.mu_E/(par.rho_E-mean(setup.V)*betaHS*3102/7.5/0.5);
+   
+    for scd = 1:length(Ds)
+        par.D = Ds(scd);
+        setup_RA = build_setup(OCN,par,33*800*1000,'seed',sd);
+        setup_DA = build_setup(OCN,par,33*800*1000,'seed',sd,'DownstreamAccumulation',true);
+        setup_RA.period = ones(length(Time),1); setup_DA.period = ones(length(Time),1);
+        surplus_RA = setup_RA.sigma.*setup_RA.F;
+        surplus_DA = setup_DA.sigma.*setup_DA.F;
+    
+        y0_RA = zeros(OCN.nNodes,4);
+        y0_RA(surplus_RA==max(surplus_RA),1) = 1/setup_RA.H(surplus_RA==max(surplus_RA));
+    
+        y0_DA = zeros(OCN.nNodes,4);
+        y0_DA(surplus_RA==max(surplus_DA),1) = 1/setup_DA.H(surplus_DA==max(surplus_DA));
 
+        y_RA = model_ODE(Time,setup_RA.par,setup_RA,y0_RA');
+        y_DA = model_ODE(Time,setup_DA.par,setup_DA,y0_DA');
 
+        if ocnmap == 1
+            DIST1_RA = OCN.Dist(surplus_RA==max(surplus_RA),:);
+            DIST1_DA = OCN.Dist(surplus_DA==max(surplus_DA),:);
+    
+            WH1_RA(:,:,scd) = y_RA(:,1:4:end);
+            WH1_DA(:,:,scd) = y_DA(:,1:4:end);
+        
+        elseif ocnmap == 2
+            DIST2_RA = OCN.Dist(surplus_RA==max(surplus_RA),:);
+            DIST2_DA = OCN.Dist(surplus_DA==max(surplus_DA),:);
+    
+            WH2_RA(:,:,scd) = y_RA(:,1:4:end);
+            WH2_DA(:,:,scd) = y_DA(:,1:4:end);
 
-% PLOT_fish_deficit (quantity)
-par.U = 1;
-Surplus = par.c*setup.H.*setup.KF - par.U*setup.H; Surplus(Surplus<0)=0;
-LC = par.c*setup.H.*setup.KF; LC = repmat(LC',OCN.nNodes,1);
-TRA = setup.T.*LC;
-figure
-colorMap_SP = [linspace(1, 0.45098039215686275,256);...
-    linspace(1, 0.19607843137254902, 256);...
-    linspace(1, 0.5098039215686274, 256)]';
-colormap(colorMap_SP);
-
-colorMap_IN = [ones(1,256); linspace(1,0,256); linspace(1,0,256)]';
-draw_OCN(OCN,Surplus,'Borders_Color','black')
-%draw_OCN(OCN,Surplus==0,'Borders_Color','black')
-set(gca,'ColorScale','log')
-colorbar 
-% for nn = 1:OCN.nNodes
-%     for mm = 1:OCN.nNodes
-%         if mm~=nn && TRA(nn,mm)>0
-%             l=line([OCN.geometry.SCX(nn)/OCN.cellsize OCN.geometry.SCX(mm)/OCN.cellsize],...
-%                 [OCN.geometry.SCY(nn)/OCN.cellsize OCN.geometry.SCY(mm)/OCN.cellsize],...
-%                 'linewidth',1);%2*(TRA(nn,mm)/max(TRA-diag(diag(TRA)),[],'all'))^0.25);
-%             l.Color=[0,0,0,(TRA(nn,mm)/max(TRA-diag(diag(TRA)),[],'all')).^0.4];
-%         end
-%     end
-% end
-% for sc = 1:OCN.nNodes
-%     plot(OCN.geometry.SCX(sc)/OCN.cellsize,OCN.geometry.SCY(sc)/OCN.cellsize,'.r','MarkerSize',0.5+1.5*log(setup.H(sc)))
-%     %text(OCN.geometry.SCX(sc)/OCN.cellsize,OCN.geometry.SCY(sc)/OCN.cellsize,num2str(sc),'Color','k')
-% end
-%%
-surplus = setup.sigma.*setup.KF;
-
-y0 = zeros(OCN.nNodes,5);
-y0(:,4) = setup.KF;
-y0(Surplus==max(Surplus),:) = [1 0 0 setup.KF(Surplus==max(Surplus)) 0];
-
-Time = 1:10*365;
-setup.nNodes = OCN.nNodes;
-
-par.lambda_FU=0;
-par.lambda_FD=0;
-par.lambda_ED=0;
-
-y = model_ODE(Time,par,setup,y0');
-
-WH = y(:,1:5:end);
-figure()
-semilogy(Time/365,WH);
-for nn = 1:OCN.nNodes
-    text(Time(end)/365,WH(end,nn),num2str(nn));
+        elseif ocnmap == 3
+            DIST3_RA = OCN.Dist(surplus_RA==max(surplus_RA),:);
+            DIST3_DA = OCN.Dist(surplus_DA==max(surplus_DA),:);
+    
+            WH3_RA(:,:,scd) = y_RA(:,1:4:end);
+            WH3_DA(:,:,scd) = y_DA(:,1:4:end);
+        end
+    end
 end
 
-%%
-close all
-figure()
-draw_OCN(OCN,WH(end,:)','Borders_Color','black')
-%draw_OCN(OCN,Surplus==0,'Borders_Color','black')
-set(gca,'ColorScale','log')
-colorbar
-clim([1e-5 5e6]);
-%colorbar( 'off' ) 
-colormap(colorMap_IN)
 
-%% TEST DIFFERENT D
-Ds = [1e3 1e4 1e5 1e6];
-WHs = zeros(length(Ds),length(Time));
-Times = [1 30 365 10*365];
+% PLOT
+% Mix distances
+DIST_RA = [DIST1_RA DIST2_RA DIST3_RA];
+DIST_DA = [DIST1_DA DIST2_DA DIST3_DA];
+
+
+
+
+% Choose times
+Times_Plot_Map = [30 365 20*365];
+Times_Plot_Fig = [1 183 365 2*365 3*365 5*365 10*365 15*365 20*365 length(Time)];
+colorMap_IN = [linspace(016/256, 179/256,11); ...
+    linspace(101/256, 021/256,11); ...
+    linspace(171/256, 041/256,11)]';
+
+
+WH_RA = zeros(length(DIST_DA),length(Times_Plot_Fig),length(Ds));
+WH_DA = zeros(length(DIST_DA),length(Times_Plot_Fig),length(Ds));
+
+%%
+figure
+
+for scd = 1:length(Ds)
+    WH_RA = [DIST_RA;
+        [squeeze(WH1_RA(Times_Plot_Fig,:,scd))';
+         squeeze(WH2_RA(Times_Plot_Fig,:,scd))';
+         squeeze(WH3_RA(Times_Plot_Fig,:,scd))']'];
+    % WH_RA = [DIST1_RA;WH1_RA(Times_Plot_Fig,:,scd)];
+
+    WH_DA = [DIST_DA;
+        [squeeze(WH1_DA(Times_Plot_Fig,:,scd))';
+         squeeze(WH2_DA(Times_Plot_Fig,:,scd))';
+         squeeze(WH3_DA(Times_Plot_Fig,:,scd))']'];
+
+    WH_RA(:,abs(WH_RA(end,:))< 1e-10) = [];
+    WH_DA(:,abs(WH_RA(end,:))< 1e-10) = [];
+
+    WH_RA = sortrows(WH_RA');
+    WH_DA = sortrows(WH_DA');
+    nexttile()
+
+    hold on
+    for tt = 1:length(Times_Plot_Fig)
+        plot(WH_RA(:,1)/1000,exp(smoothdata(log10(WH_RA(:,tt+1)),'smoothingfactor',1)),'color',colorMap_IN(tt,:),...
+            'linestyle','-','linewidth',1)
+    end
+    set(gca,'Yscale','log')
+    xlabel('Distance to first infected node [km]')
+    ylabel('I^H')
+    %legend(num2str(Times_Plot_Fig'/365))
+    
+end
+%%
+
+
+
+MTR = sortrows(MTR);
+
+
 figure
 cntr = 0;
 for i = 1:length(Ds)
     par.D = Ds(i);
     [setup] = build_setup(OCN,par,33*800*1000,'seed',3108);
-    surplus = setup.sigma.*setup.KF;
-    y0 = zeros(OCN.nNodes,5);
+    surplus_node = setup.sigma.*setup.KF;
+    y0 = zeros(OCN.nNodes,4);
     y0(:,4) = setup.KF;
     y0(Surplus==max(Surplus),:) = [1 0 0 setup.KF(Surplus==max(Surplus)) 0];
     
     
-    y = model_ODE(Time,par,setup,y0');
+    
     WH = y(:,1:5:end);
     WHs(i,:) = WH*setup.H/sum(setup.H);
 
@@ -121,6 +157,17 @@ for i = 1:length(Ds)
 
 end
 
-figure
-semilogy(Time/365,WHs)
+
+%%
+close all
+figure()
+draw_OCN(OCN,WH(end,:)','Borders_Color','black')
+%draw_OCN(OCN,Surplus==0,'Borders_Color','black')
+set(gca,'ColorScale','log')
+colorbar
+clim([1e-5 5e6]);
+%colorbar( 'off' ) 
+colormap(colorMap_IN)
+
+
 

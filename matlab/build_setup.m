@@ -22,6 +22,14 @@ function [s] = build_setup(OCN,p,TotalPopulation,varargin)
     end
 
     s.nNodes = OCN.nNodes;
+
+    %%% LOAD PARAMETERS
+    s.par = p;
+    
+    % Hydrological connectivity
+    s.W = OCN.W;
+
+    
     %%% POPULATIONS
     % Generate random human population Zipf distributed
     if ip.Results.DownstreamAccumulation == true
@@ -43,16 +51,22 @@ function [s] = build_setup(OCN,p,TotalPopulation,varargin)
         /max(OCN.SC_AccArea.^0.3...
         .* OCN.SC_RiverLength.*OCN.SC_RiverWidth.*OCN.SC_RiverDepth)...
         .* OCN.SC_RiverLength.*OCN.SC_RiverWidth.*OCN.SC_RiverDepth;
+   
     
     % Snail population
     s.S = OCN.SC_RicePaddy_Area*p.dS;
     
     % FISH MARKET
-    %p.c = sum(p.U*s.H)/sum(s.H.*s.KF); % individual catch rate
-    s.delta = 1-s.KF*p.c/p.U; s.delta(s.delta<0)=0; % deficit
-    s.sigma = 1-p.U/p.c./s.KF; s.sigma(s.sigma<0) = 0; % surplus
-    s.chi = p.c*s.H;
-    
+    %s.par.c = p.U/sum(s.KF); % individual catch rate
+    s.par.c = sum(p.U*s.H)/sum(s.H.*s.KF); % individual catch rate
+    s.chi = s.par.c*s.H;
+
+    % Fish population at equilibrium
+    s.F = find_fish_equilibrium(s.KF,s.W,s.par,s.chi);
+
+    s.delta = 1-s.F*s.par.c/p.U; s.delta(s.delta<0)=0; % deficit
+    s.sigma = 1-p.U/s.par.c./s.F; s.sigma(s.sigma<0) = 0; % surplus
+
     % Build trade matrix
     T = s.delta./exp(OCN.Dist./p.D); T(eye(OCN.nNodes)==1) = 0; % distances
     T = T./sum(T,1).*repmat(s.sigma',OCN.nNodes,1); % never exceeding surplus
@@ -70,14 +84,21 @@ function [s] = build_setup(OCN,p,TotalPopulation,varargin)
 
     s.V = OCN.SC_RicePaddy_Area.*0.5; % volume for eggs
 
-    % Hydrological connectivity
-    s.W = OCN.W;
+
+
+    % Add parameter after volume
+    betaHS = 9.16e-11;
+    s.par.beta_E = betaHS*mean(s.V)*p.mu_E/(p.rho_E-mean(s.V)*betaHS*p.dS/0.5);
+
     
+    
+    
+
 
 
     % Unify results
     if ip.Results.Unify == true
-        s.chi = p.c*sum(s.H); 
+        s.chi = s.par.c*sum(s.H); 
         s.nNodes = 1; 
         s.T = 1; 
         s.W = 1;
@@ -85,5 +106,6 @@ function [s] = build_setup(OCN,p,TotalPopulation,varargin)
         s.H = sum(s.H);
         s.KF = sum(s.KF);
         s.S = sum(s.S);
+        s.F = sum(s.F);
     end
 end

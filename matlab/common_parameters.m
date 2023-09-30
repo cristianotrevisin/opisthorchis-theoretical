@@ -15,6 +15,10 @@ function par = common_parameters()
     par.U = 1;
     par.D = 10000;
     
+    par.dF = 10;
+    par.dS = 30;
+    par.lambda_FU=0;
+    par.lambda_FD=0;
 
 
 end

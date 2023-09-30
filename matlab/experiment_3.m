@@ -12,10 +12,7 @@ figure; draw_OCN(OCN,NaN); hold on
 for sc = 1:OCN.nNodes; text(OCN.geometry.SCX(sc)/OCN.cellsize,OCN.geometry.SCY(sc)/OCN.cellsize,num2str(sc),'Color','k'); end;
 
 par = common_parameters();
-par.dF = 10;
-par.dS = 30;
-par.c = 3.0280e-08;
-par.D = 100000;
+
 
 [setup] = build_setup(OCN,par,33*800*1000,'seed',3108);
 setup.T = eye(setup.nNodes);
@@ -24,19 +21,20 @@ setup.T = eye(setup.nNodes);
 betaHS = 9.16e-11;
 par.beta_E = betaHS*mean(setup.V)*par.mu_E/(par.rho_E-mean(setup.V)*betaHS*3102/7.5/0.5);
 
-
+F = find_fish_equilibrium(setup.KF,setup.W,par,setup.chi);
 
 y0 = zeros(OCN.nNodes,5);
-y0(:,4) = setup.KF;
+y0(:,4) = F;
 y0(6,:) = [1 0 0 setup.KF(6) 0];
 
-Time = 1:10*365;
+Time = 1:100*365;
 setup.nNodes = OCN.nNodes;
+
 
 %% TEST DOWNSTREAM ONLY
 
 par.lambda_FD = 0.01;
-par.lambda_FU = 0;%0.005;
+par.lambda_FU = 0.005;
 
 Times = [365:365:365*10];
 

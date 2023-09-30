@@ -2,7 +2,7 @@ close all
 clearvars
 clc
 
-OCN_A = build_OCN("OCN_A.mat");
+OCN_A = build_OCN("OCN_A.mat",55*10000*10000);
 OCN_B = build_OCN("OCN_B.mat");
 OCN_C = build_OCN("OCN_C.mat");
 % Add attributes
@@ -114,3 +114,37 @@ subplot(2,3,6)
 colormap sky
 draw_OCN(OCN_C,setup.H)
 set(gca,'ColorScale','log')
+
+
+
+
+%%
+% PLOT_fish_deficit (quantity)
+Surplus = par.c*setup.H.*setup.KF - par.U*setup.H; Surplus(Surplus<0)=0;
+LC = par.c*setup.H.*setup.KF; LC = repmat(LC',OCN.nNodes,1);
+TRA = setup.T.*LC;
+figure
+colorMap_SP = [linspace(1, 0.45098039215686275,256);...
+    linspace(1, 0.19607843137254902, 256);...
+    linspace(1, 0.5098039215686274, 256)]';
+colormap(colorMap_SP);
+
+colorMap_IN = [ones(1,256); linspace(1,0,256); linspace(1,0,256)]';
+draw_OCN(OCN,Surplus,'Borders_Color','black')
+%draw_OCN(OCN,Surplus==0,'Borders_Color','black')
+set(gca,'ColorScale','log')
+colorbar 
+% for nn = 1:OCN.nNodes
+%     for mm = 1:OCN.nNodes
+%         if mm~=nn && TRA(nn,mm)>0
+%             l=line([OCN.geometry.SCX(nn)/OCN.cellsize OCN.geometry.SCX(mm)/OCN.cellsize],...
+%                 [OCN.geometry.SCY(nn)/OCN.cellsize OCN.geometry.SCY(mm)/OCN.cellsize],...
+%                 'linewidth',1);%2*(TRA(nn,mm)/max(TRA-diag(diag(TRA)),[],'all'))^0.25);
+%             l.Color=[0,0,0,(TRA(nn,mm)/max(TRA-diag(diag(TRA)),[],'all')).^0.4];
+%         end
+%     end
+% end
+% for sc = 1:OCN.nNodes
+%     plot(OCN.geometry.SCX(sc)/OCN.cellsize,OCN.geometry.SCY(sc)/OCN.cellsize,'.r','MarkerSize',0.5+1.5*log(setup.H(sc)))
+%     %text(OCN.geometry.SCX(sc)/OCN.cellsize,OCN.geometry.SCY(sc)/OCN.cellsize,num2str(sc),'Color','k')
+% end

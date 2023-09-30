@@ -1,7 +1,8 @@
-function OCN = build_OCN(name)
+function OCN = build_OCN(name,thrA)
 
     load(fullfile('..','dataOCN', name));
     
+    OCN.thrA = thrA;
     % Properties for drawing
     OCN.cellsize = 10000;%cellsize;
     cellsize = 10000;
@@ -65,8 +66,23 @@ function OCN = build_OCN(name)
     end
 
     % Rice fields suitability
+    
+    %Compute closeness to river
+    river = OCN.FD.A >= OCN.thrA;
+    distance = zeros(size(OCN.FD.A));
+    for px1 = 1:length(OCN.FD.A)
+        dv = [];
+        for px2 = 1:length(OCN.FD.A)
+            if river(px2)
+                dv = [dv sqrt((X(px1)-X(px2))^2+(Y(px1)-Y(px2))^2)];
+            end
+        end
+        distance(px1) = min(dv,[],'all');
+    end
+
+    scaling_distance = -log(0.25)/20000; % at 20 km likelihood of finding rive field is 25%
     OCN.FD.Z = FD_Z;
-    OCN.RicePaddy = rand(size(FD_Z)) <=  0.8*exp(-FD_Z*0.0008);
+    OCN.RicePaddy = rand(size(FD_Z)) <=  0.8*exp(-FD_Z*0.0008).*exp(-scaling_distance*distance);
     OCN.SC_RicePaddy_Area = zeros(OCN.nNodes,1);
     for nn = 1:OCN.nNodes
         OCN.SC_RicePaddy_Area(nn) = sum(OCN.RicePaddy(CTC==nn))*cellsize^2;
