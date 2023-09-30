@@ -84,34 +84,28 @@ colorMap_IN = [linspace(016/256, 179/256,11); ...
     linspace(171/256, 041/256,11)]';
 
 
-WH_RA = zeros(length(DIST_DA),length(Times_Plot_Fig),length(Ds));
-WH_DA = zeros(length(DIST_DA),length(Times_Plot_Fig),length(Ds));
+
 
 %%
 figure
 
 for scd = 1:length(Ds)
-    WH_RA = [DIST_RA;
+    WH = [DIST_RA DIST_DA;
         [squeeze(WH1_RA(Times_Plot_Fig,:,scd))';
          squeeze(WH2_RA(Times_Plot_Fig,:,scd))';
-         squeeze(WH3_RA(Times_Plot_Fig,:,scd))']'];
-    % WH_RA = [DIST1_RA;WH1_RA(Times_Plot_Fig,:,scd)];
-
-    WH_DA = [DIST_DA;
-        [squeeze(WH1_DA(Times_Plot_Fig,:,scd))';
+         squeeze(WH3_RA(Times_Plot_Fig,:,scd))';
+         squeeze(WH1_DA(Times_Plot_Fig,:,scd))';
          squeeze(WH2_DA(Times_Plot_Fig,:,scd))';
          squeeze(WH3_DA(Times_Plot_Fig,:,scd))']'];
 
-    WH_RA(:,abs(WH_RA(end,:))< 1e-10) = [];
-    WH_DA(:,abs(WH_RA(end,:))< 1e-10) = [];
+    WH(:,abs(WH(end,:))< 1e-10) = [];
 
-    WH_RA = sortrows(WH_RA');
-    WH_DA = sortrows(WH_DA');
+    WH = sortrows(WH');
     nexttile()
 
     hold on
     for tt = 1:length(Times_Plot_Fig)
-        plot(WH_RA(:,1)/1000,exp(smoothdata(log10(WH_RA(:,tt+1)),'smoothingfactor',1)),'color',colorMap_IN(tt,:),...
+        plot(WH(:,1)/1000,exp(smoothdata(log10(WH(:,tt+1)),'smoothingfactor',1)),'color',colorMap_IN(tt,:),...
             'linestyle','-','linewidth',1)
     end
     set(gca,'Yscale','log')
@@ -120,54 +114,23 @@ for scd = 1:length(Ds)
     %legend(num2str(Times_Plot_Fig'/365))
     
 end
+
+
 %%
 
-
-
-MTR = sortrows(MTR);
-
-
+colorMap_MP = [ones(256,1)';linspace(1,0,256);linspace(1,0,256)]';
 figure
+tiledlayout(2,3)
 cntr = 0;
-for i = 1:length(Ds)
-    par.D = Ds(i);
-    [setup] = build_setup(OCN,par,33*800*1000,'seed',3108);
-    surplus_node = setup.sigma.*setup.KF;
-    y0 = zeros(OCN.nNodes,4);
-    y0(:,4) = setup.KF;
-    y0(Surplus==max(Surplus),:) = [1 0 0 setup.KF(Surplus==max(Surplus)) 0];
-    
-    
-    
-    WH = y(:,1:5:end);
-    WHs(i,:) = WH*setup.H/sum(setup.H);
-
-    for tt = 1:length(Times)
+for d = Ds(2):Ds(3)
+    for tt = 1:length(Times_Plot_Map)
         cntr = cntr+1;
         subplot(4,4,cntr)
-        draw_OCN(OCN,WH(Times(tt),:)','Borders_Color','black')
+        draw_OCN(OCN,WH1_DA(tt,:,d)','Borders_Color','black')
         set(gca,'ColorScale','log')
         colorbar
         clim([1e-5 5e6]);
-        colormap(colorMap_IN)
+        colormap(colorMap_MP)
         colorbar( 'off' ) 
     end
-
-
-
 end
-
-
-%%
-close all
-figure()
-draw_OCN(OCN,WH(end,:)','Borders_Color','black')
-%draw_OCN(OCN,Surplus==0,'Borders_Color','black')
-set(gca,'ColorScale','log')
-colorbar
-clim([1e-5 5e6]);
-%colorbar( 'off' ) 
-colormap(colorMap_IN)
-
-
-

@@ -1,4 +1,4 @@
-% In here we want to test the effect of fish market by running a simulation
+% In here we want to investigate the existance of a local equilibrium
 
 
 clc; close all; clearvars;
