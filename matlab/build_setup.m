@@ -82,30 +82,41 @@ function [s] = build_setup(OCN,p,TotalPopulation,varargin)
 
     s.T = T;
 
-    s.V = OCN.SC_RicePaddy_Area.*0.5; % volume for eggs
-
+    s.A = OCN.SC_RicePaddy_Area; % area for eggs
+    s.A(s.A == 0) = NaN;
 
 
     % Add parameter after volume
-    betaHS = 9.16e-11;
-    s.par.beta_E = betaHS*mean(s.V)*p.mu_E/(p.rho_E-mean(s.V)*betaHS*p.dS/0.5);
+    betaSH = 9.16e-11;
+    s.par.beta_E = betaSH*mean(s.A,'omitmissing')*p.mu_E/(p.rho_E-mean(s.A,'omitmissing')*betaSH*p.dS);
 
-    
-    
-    
+    betaFS = 3.477e-5;
+    rhoC = 150;
+    MF = 3;
+    muC = -log(0.01)/2;
+    betaC = betaFS*MF*muC/(rhoC-betaFS*MF*mean(s.F./s.A,'omitmissing'));
+    % s.par.theta_C = rhoC*betaC./(muC+betaC*s.F./s.A);
+    % s.par.theta_C(isnan(s.par.theta_C)) = 0;
+    s.par.theta_C = betaFS*MF;
 
-
+    % Snail exposure reduction
+    s.par.xi = (rand(size(s.H))).*exp(-rand(size(s.H)).*0.00001.*s.H);
 
     % Unify results
     if ip.Results.Unify == true
-        s.chi = s.par.c*sum(s.H); 
+        s.chi = s.par.c*sum(s.H.*s.F,'omitmissing')/sum(s.F,'omitmissing'); 
+        s.par.c = s.chi/sum(s.H,'omitmissing');
         s.nNodes = 1; 
-        s.T = 1; 
         s.W = 1;
-        s.V = sum(s.V);
-        s.H = sum(s.H);
-        s.KF = sum(s.KF);
-        s.S = sum(s.S);
-        s.F = sum(s.F);
+        s.A = sum(s.A,'omitmissing');
+        s.H = sum(s.H,'omitmissing');
+        s.KF = sum(s.KF,'omitmissing');
+        s.par.xi = sum(s.par.xi.*s.S,'omitmissing')/sum(s.S,'omitmissing');
+        s.S = sum(s.S,'omitmissing');
+        s.F = sum(s.F,'omitmissing');
+        s.par.theta_C = rhoC*betaC./(muC+betaC*s.F./s.A);
+        s.delta = 1-s.F*s.par.c/p.U; s.delta(s.delta<0)=0; % deficit
+        s.sigma = 1-p.U/s.par.c./s.F; s.sigma(s.sigma<0) = 0; % surplus
+        s.T = diag(1-s.sigma); 
     end
 end

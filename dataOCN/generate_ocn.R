@@ -3,13 +3,17 @@ library(OCNet)
 dimX = 80
 dimY = 100
 nIter = 500*dimX*dimY
+outletSide = "E"
 OCN <- create_OCN(dimX,dimY,initialNoCoolingPhase = 0.3,displayUpdates = 2,
                   nUpdates = 100,nIter = nIter,
-                  cellsize = 10000)
+                  cellsize = 10000,
+                  outletSide = outletSide)
 OCN <- landscape_OCN(OCN,slope0 = 0.000667)
 OCN <- aggregate_OCN(OCN,thrA = 55*10000*10000)
 OCN <- rivergeometry_OCN(OCN,widthMax = 400, depthMax = 7.50)
 draw_subcatchments_OCN(OCN)
+
+OCN = paths_OCN(OCN, includeUnconnectedPaths = TRUE)
 
 
 cellsize=10000
