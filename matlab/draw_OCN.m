@@ -40,7 +40,11 @@ function draw_OCN(OCN,X,varargin)
         end
     else
         imagesc(X','CDataMapping','direct','AlphaData',0.4);
-        colormap(p.Results.cmap)
+        if all(X==0,'all')
+            colormap([0.03137254901960784 0.2549019607843137 0.3607843137254902]);
+        else
+            colormap(p.Results.cmap)
+        end
     end
     set(gca,'YDir','normal')
     hold on

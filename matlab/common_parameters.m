@@ -13,15 +13,24 @@ function par = common_parameters()
 
     %Egg shedding
     par.rho_E = 102.4353*200; % Crellen 
-    par.omega = 424.7445; % Crellen (10 for 1 worm infection)
+    par.alpha = 424.7445; % Crellen (10 for 1 worm infection)
 
-    par.U = .1;
     par.D = 10000;
     
-    par.dF = 0.08;
+    par.rho_C = (263*6+98*9+91*17)/(6+9+17); % cercariae/day
+    par.mu_C = -log(0.01)/2; 
+
+
+    par.dF = .08;
+    par.epsilon0 = 0.5;
+
+    par.beta_E =  .7e-07;
+    par.beta_C = .41;
+    par.c = 1e-7;
+
+
     par.dS = 20;
-    par.lambda_FU=0.01;
-    par.lambda_FD=0.01;
+    par.lambda_F=0;
 
 
 end

@@ -181,144 +181,39 @@ colorMap_SP = [linspace(1, 0.45098039215686275,256);...
     linspace(1, 0.19607843137254902, 256);...
     linspace(1, 0.5098039215686274, 256)]';
 
-
+purple = [0.45098039215686275,0.19607843137254902,0.5098039215686274];
 colorMap_IN = [ones(1,256); linspace(1,0,256); linspace(1,0,256)]';
 
-figure;
-tiledlayout(2,3)
+%% 
+purple = "#6A0DAD";
+close all
+for i = 1:2
+    if i == 1
+        stp = setup_A1;
+        ocn = OCN_A;
+    elseif i == 2
+        stp = setup_A2;
+        ocn = OCN_A;
+    end
+    figure;
+    draw_OCN(ocn,NaN)
+    set(gca,'ColorScale','log')
 
-nexttile
-Surplus = setup_A1.par.c*setup_A1.H.*setup_A1.F - setup_A1.par.U*setup_A1.H; Surplus(Surplus<0)=0;
-LC = setup_A1.par.c*setup_A1.H.*setup_A1.F; LC = repmat(LC',OCN_A.nNodes,1);
-TRA = setup_A1.T.*LC;
-draw_OCN(OCN_A,Surplus,'Borders_Color','black')
-colormap(colorMap_SP);
-clim([1 5e4])
-set(gca,'ColorScale','log')
-%colorbar 
-for nn = 1:OCN_A.nNodes
-    for mm = 1:OCN_A.nNodes
-        if mm~=nn && TRA(nn,mm)>0
-            l=line([OCN_A.geometry.SCX(nn)/OCN_A.cellsize OCN_A.geometry.SCX(mm)/OCN_A.cellsize],...
-                [OCN_A.geometry.SCY(nn)/OCN_A.cellsize OCN_A.geometry.SCY(mm)/OCN_A.cellsize],...
-                'linewidth',1);%2*(TRA(nn,mm)/max(TRA-diag(diag(TRA)),[],'all'))^0.25);
-            l.Color=[0,0,0,(TRA(nn,mm)/max(TRA-diag(diag(TRA)),[],'all')).^0.1];
+    for nn = 1:ocn.nNodes
+        for mm = 1:ocn.nNodes
+            if mm~=nn && stp.T(nn,mm)>0
+                l=line([ocn.geometry.SCX(nn)/ocn.cellsize ocn.geometry.SCX(mm)/ocn.cellsize],...
+                    [ocn.geometry.SCY(nn)/ocn.cellsize ocn.geometry.SCY(mm)/ocn.cellsize],...
+                    'linewidth',1);
+                l.Color=[0,0,0,(stp.T(nn,mm)/max(stp.T-diag(diag(stp.T)),[],'all')).^0.1];
+            end
         end
     end
-end
-for sc = 1:OCN_A.nNodes
-    plot(OCN_A.geometry.SCX(sc)/OCN_A.cellsize,OCN_A.geometry.SCY(sc)/OCN_A.cellsize,'.r','MarkerSize',0.5+1.5*log(setup_A1.H(sc)))
-end
-
-nexttile
-Surplus = setup_B1.par.c*setup_B1.H.*setup_B1.F - setup_B1.par.U*setup_B1.H; Surplus(Surplus<0)=0;
-LC = setup_B1.par.c*setup_B1.H.*setup_B1.F; LC = repmat(LC',OCN_B.nNodes,1);
-TRA = setup_B1.T.*LC;
-draw_OCN(OCN_B,Surplus,'Borders_Color','black')
-colormap(colorMap_SP);
-clim([1 5e4])
-set(gca,'ColorScale','log')
-%colorbar 
-for nn = 1:OCN_B.nNodes
-    for mm = 1:OCN_B.nNodes
-        if mm~=nn && TRA(nn,mm)>0
-            l=line([OCN_B.geometry.SCX(nn)/OCN_B.cellsize OCN_B.geometry.SCX(mm)/OCN_B.cellsize],...
-                [OCN_B.geometry.SCY(nn)/OCN_B.cellsize OCN_B.geometry.SCY(mm)/OCN_B.cellsize],...
-                'linewidth',1);%2*(TRA(nn,mm)/max(TRA-diag(diag(TRA)),[],'all'))^0.25);
-            l.Color=[0,0,0,(TRA(nn,mm)/max(TRA-diag(diag(TRA)),[],'all')).^0.1];
-        end
-    end
-end
-for sc = 1:OCN_B.nNodes
-    plot(OCN_B.geometry.SCX(sc)/OCN_B.cellsize,OCN_B.geometry.SCY(sc)/OCN_B.cellsize,'.r','MarkerSize',0.5+1.5*log(setup_B1.H(sc)))
-end
-
-nexttile
-Surplus = setup_C1.par.c*setup_C1.H.*setup_C1.F - setup_C1.par.U*setup_C1.H; Surplus(Surplus<0)=0;
-LC = setup_C1.par.c*setup_C1.H.*setup_C1.F; LC = repmat(LC',OCN_C.nNodes,1);
-TRA = setup_C1.T.*LC;
-draw_OCN(OCN_C,Surplus,'Borders_Color','black')
-colormap(colorMap_SP);
-clim([1 5e4])
-set(gca,'ColorScale','log')
-colorbar 
-for nn = 1:OCN_C.nNodes
-    for mm = 1:OCN_C.nNodes
-        if mm~=nn && TRA(nn,mm)>0
-            l=line([OCN_C.geometry.SCX(nn)/OCN_C.cellsize OCN_C.geometry.SCX(mm)/OCN_C.cellsize],...
-                [OCN_C.geometry.SCY(nn)/OCN_C.cellsize OCN_C.geometry.SCY(mm)/OCN_C.cellsize],...
-                'linewidth',1);%2*(TRA(nn,mm)/max(TRA-diag(diag(TRA)),[],'all'))^0.25);
-            l.Color=[0,0,0,(TRA(nn,mm)/max(TRA-diag(diag(TRA)),[],'all')).^0.1];
-        end
-    end
-end
-for sc = 1:OCN_C.nNodes
-    plot(OCN_C.geometry.SCX(sc)/OCN_C.cellsize,OCN_C.geometry.SCY(sc)/OCN_C.cellsize,'.r','MarkerSize',0.5+1.5*log(setup_C1.H(sc)))
+    stp.sigma = stp.sigma/max(stp.sigma); stp.sigma(stp.sigma<=0)=NaN; 
+    stp.delta = stp.delta/max(stp.delta); stp.delta(stp.delta<=0)=NaN; 
+    scatter(ocn.geometry.SCX/ocn.cellsize,ocn.geometry.SCY/ocn.cellsize,500*stp.sigma.^0.5,'filled','MarkerFaceColor',purple)
+    hold on
+    scatter(ocn.geometry.SCX/ocn.cellsize,ocn.geometry.SCY/ocn.cellsize,500*stp.delta.^0.5,'MarkerEdgeColor',purple,'LineWidth',1)
 end
 
 
-nexttile
-Surplus = setup_A2.par.c*setup_A2.H.*setup_A2.F - setup_A2.par.U*setup_A2.H; Surplus(Surplus<0)=0;
-LC = setup_A2.par.c*setup_A2.H.*setup_A2.F; LC = repmat(LC',OCN_A.nNodes,1);
-TRA = setup_A2.T.*LC;
-draw_OCN(OCN_A,Surplus,'Borders_Color','black')
-colormap(colorMap_SP);
-set(gca,'ColorScale','log')
-%colorbar 
-for nn = 1:OCN_A.nNodes
-    for mm = 1:OCN_A.nNodes
-        if mm~=nn && TRA(nn,mm)>0
-            l=line([OCN_A.geometry.SCX(nn)/OCN_A.cellsize OCN_A.geometry.SCX(mm)/OCN_A.cellsize],...
-                [OCN_A.geometry.SCY(nn)/OCN_A.cellsize OCN_A.geometry.SCY(mm)/OCN_A.cellsize],...
-                'linewidth',1);%2*(TRA(nn,mm)/max(TRA-diag(diag(TRA)),[],'all'))^0.25);
-            l.Color=[0,0,0,(TRA(nn,mm)/max(TRA-diag(diag(TRA)),[],'all')).^0.1];
-        end
-    end
-end
-for sc = 1:OCN_A.nNodes
-    plot(OCN_A.geometry.SCX(sc)/OCN_A.cellsize,OCN_A.geometry.SCY(sc)/OCN_A.cellsize,'.r','MarkerSize',0.5+1.5*log(setup_A2.H(sc)))
-end
-
-nexttile
-Surplus = setup_B2.par.c*setup_B2.H.*setup_B2.F - setup_B2.par.U*setup_B2.H; Surplus(Surplus<0)=0;
-LC = setup_B2.par.c*setup_B2.H.*setup_B2.F; LC = repmat(LC',OCN_B.nNodes,1);
-TRA = setup_B2.T.*LC;
-draw_OCN(OCN_B,Surplus,'Borders_Color','black')
-colormap(colorMap_SP);
-set(gca,'ColorScale','log')
-%colorbar 
-for nn = 1:OCN_B.nNodes
-    for mm = 1:OCN_B.nNodes
-        if mm~=nn && TRA(nn,mm)>0
-            l=line([OCN_B.geometry.SCX(nn)/OCN_B.cellsize OCN_B.geometry.SCX(mm)/OCN_B.cellsize],...
-                [OCN_B.geometry.SCY(nn)/OCN_B.cellsize OCN_B.geometry.SCY(mm)/OCN_B.cellsize],...
-                'linewidth',1);%2*(TRA(nn,mm)/max(TRA-diag(diag(TRA)),[],'all'))^0.25);
-            l.Color=[0,0,0,(TRA(nn,mm)/max(TRA-diag(diag(TRA)),[],'all')).^0.1];
-        end
-    end
-end
-for sc = 1:OCN_B.nNodes
-    plot(OCN_B.geometry.SCX(sc)/OCN_B.cellsize,OCN_B.geometry.SCY(sc)/OCN_B.cellsize,'.r','MarkerSize',0.5+1.5*log(setup_B2.H(sc)))
-end
-
-nexttile
-Surplus = setup_C2.par.c*setup_C2.H.*setup_C2.F - setup_C2.par.U*setup_C2.H; Surplus(Surplus<0)=0;
-LC = setup_C2.par.c*setup_C2.H.*setup_C2.F; LC = repmat(LC',OCN_C.nNodes,1);
-TRA = setup_C2.T.*LC;
-draw_OCN(OCN_C,Surplus,'Borders_Color','black')
-colormap(colorMap_SP);
-set(gca,'ColorScale','log')
-%colorbar 
-for nn = 1:OCN_C.nNodes
-    for mm = 1:OCN_C.nNodes
-        if mm~=nn && TRA(nn,mm)>0
-            l=line([OCN_C.geometry.SCX(nn)/OCN_C.cellsize OCN_C.geometry.SCX(mm)/OCN_C.cellsize],...
-                [OCN_C.geometry.SCY(nn)/OCN_C.cellsize OCN_C.geometry.SCY(mm)/OCN_C.cellsize],...
-                'linewidth',1);%2*(TRA(nn,mm)/max(TRA-diag(diag(TRA)),[],'all'))^0.25);
-            l.Color=[0,0,0,(TRA(nn,mm)/max(TRA-diag(diag(TRA)),[],'all')).^0.1];
-        end
-    end
-end
-for sc = 1:OCN_C.nNodes
-    plot(OCN_C.geometry.SCX(sc)/OCN_C.cellsize,OCN_C.geometry.SCY(sc)/OCN_C.cellsize,'.r','MarkerSize',0.5+1.5*log(setup_C2.H(sc)))
-end

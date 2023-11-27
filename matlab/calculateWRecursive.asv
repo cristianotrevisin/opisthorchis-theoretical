@@ -1,0 +1,18 @@
+function W = calculateWRecursive(node, H, F, W, visited)
+    visited(node) = true;
+    connectedNodes = find(H(node, :) == 1);
+    % Assign ones to first node
+    if node == 1
+        W(connectedNodes,node) = 1;
+    end
+    
+    % Start recursive computation (exploration along each branch)
+    for i = connectedNodes
+        if ~visited(i)
+            % Calculate W(i, node) and W(node, i)
+            W(node, i) = W(i,node) * F(node) / F(node);
+
+            W = calculateWRecursive(i, H, F, W, visited);
+        end
+    end
+end

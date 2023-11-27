@@ -13,24 +13,20 @@ OCN = build_OCN("OCN_A.mat",30*10000*10000);
 %for sc = 1:OCN.nNodes; text(OCN.geometry.SCX(sc)/OCN.cellsize,OCN.geometry.SCY(sc)/OCN.cellsize,num2str(sc),'Color','k'); end;
 
 par = common_parameters();
+par.lambda_FU = 0.01; par.lambda_FD = 0.01; 
 
 setup = build_setup(OCN,par,33*800*1000,'seed',3108);
 
-
-
-outlet = find(OCN.SC_AccArea == max(OCN.SC_AccArea));
-seeding_node = find(OCN.distW(outlet,:)==max(OCN.distW(outlet,:)));
-
 y0 = zeros(OCN.nNodes,4);
-y0(seeding_node,:) = [1/setup.H(seeding_node) 0 0 0];
+y0(:,1) = 1./setup.H;
 
-Time = 1:20*365;
+Time = 1:50*365;
 
 %Test without seasonality
 setup.period = ones(length(Time),1);
 yNS = model_ODE(Time,setup.par,setup,y0');
 %Test with seasonality
-setup.period = 0.5+0.5*sin((Time'-365.25)/365.25*2*pi);
+setup.period = 1+sin((Time'-365.25)/365.25*2*pi);
 yWS = model_ODE(Time,setup.par,setup,y0);
 
 WHNS = yNS(:,1:4:end); WHWS = yWS(:,1:4:end);

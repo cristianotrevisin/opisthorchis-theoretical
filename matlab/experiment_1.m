@@ -8,7 +8,7 @@ set(groot, 'defaultFigureRenderer', 'painters')
 
 par = common_parameters();
 
-Time = 1:200*365; 
+Time = 1:500*365; 
 
 plt_RA = zeros(length(Time),4,3);
 plt_DA = zeros(length(Time),4,3);
@@ -17,8 +17,8 @@ p_eqi_RA = zeros(4,3);
 p_eqi_DA = zeros(4,3);
 p_eqi_UNI = zeros(4,3);
 
-plot_maps = [0 0 0];
-run_maps = [1 2 3];
+plot_maps = [1 0 0];
+run_maps = 1%[1 2 3];
 for ocnmap = run_maps
     if ocnmap == 1
         OCN = build_OCN("OCN_A.mat",30*10000*10000);
@@ -37,19 +37,16 @@ for ocnmap = run_maps
     setup_DA = build_setup(OCN,par,33*800*1000,'seed',sd,'DownstreamAccumulation',true);
     setup_UNI = build_setup(OCN,par,33*800*1000,'seed',sd,'Unify',true);
 
-
-    % Prevent transportation of raw fish outside community
-    setup_RA.T = diag(1-setup_RA.sigma);
-    setup_DA.T = diag(1-setup_DA.sigma);
-    setup_UNI.T = 1-setup_UNI.sigma;
-
+    setup_RA.T = diag(min(setup_RA.par.U*setup_RA.H,setup_RA.chi.*setup_RA.F));
+    setup_DA.T = diag(min(setup_DA.par.U*setup_DA.H,setup_DA.chi.*setup_DA.F));
 
 
     % Now check endemic equilibrium in nodes (random allocation)
     eqi_RA = zeros(OCN.nNodes,4);
     for nn = 1:OCN.nNodes
-        tmp = max(find_EE(setup_RA.par,setup_RA.par.c*setup_RA.H(nn),setup_RA.H(nn),...
-            setup_RA.S(nn),setup_RA.F(nn),setup_RA.A(nn),setup_RA.par.theta_C,setup_RA.par.xi(nn)));
+        tmp = max(find_EE(setup_RA.par,setup_RA.H(nn), setup_RA.S(nn), setup_RA.A(nn),...
+            setup_RA.chi(nn),setup_RA.par.epsilon(nn),setup_RA.par.theta(nn),...
+            setup_RA.par.xi(nn),setup_RA.T(nn,nn)));
         if  isempty(tmp) || tmp(1)==0
             eqi_RA(nn,:)=0;
         else
@@ -64,8 +61,9 @@ for ocnmap = run_maps
     % Now check endemic equilibrium in nodes (downstream accumulation)
     eqi_DA = zeros(OCN.nNodes,4);
     for nn = 1:OCN.nNodes
-        tmp = max(find_EE(setup_DA.par,setup_DA.par.c*setup_DA.H(nn),setup_DA.H(nn),...
-            setup_DA.S(nn),setup_DA.F(nn),setup_DA.A(nn),setup_DA.par.theta_C,setup_DA.par.xi(nn)));
+        tmp = max(find_EE(setup_DA.par,setup_DA.H(nn), setup_DA.S(nn), setup_DA.A(nn),...
+            setup_DA.chi(nn),setup_DA.par.epsilon(nn),setup_DA.par.theta(nn),...
+            setup_DA.par.xi(nn),setup_DA.T(nn,nn)));
         if  isempty(tmp) || tmp(1)==0
             eqi_DA(nn,:)=0;
         else
@@ -78,9 +76,9 @@ for ocnmap = run_maps
     
 
     % Check endemic equilibrium in whole system
-    eqi = find_EE(setup_UNI.par,...
-        setup_UNI.par.c*setup_UNI.H,...
-        setup_UNI.H,setup_UNI.S,setup_UNI.F,setup_UNI.A,setup_UNI.par.theta_C,setup_UNI.par.xi);
+    eqi = find_EE(setup_UNI.par,setup_UNI.H,setup_UNI.S,setup_UNI.A,... 
+        setup_UNI.chi,setup_UNI.par.epsilon,setup_UNI.par.theta,...
+        setup_UNI.par.xi,setup_UNI.T);
 
     p_eqi_UNI(:,ocnmap) = max(eqi)';
     
@@ -88,15 +86,15 @@ for ocnmap = run_maps
     
     % Random allocation
     y0_RA = zeros(4,OCN.nNodes);
-    y0_RA(1,:) = 1./setup_RA.H';
+    y0_RA(1,:) = 100./setup_RA.H';
     
     % Downstream accumulation
     y0_DA = zeros(4,OCN.nNodes);
-    y0_DA(1,:) = 1./setup_DA.H';
+    y0_DA(1,:) = 100./setup_DA.H';
     
     % Unified
     y0_UNI = zeros(4,1);
-    y0_UNI(1) = setup_DA.nNodes./setup_UNI.H;
+    y0_UNI(1) = 100*setup_DA.nNodes./setup_UNI.H;
 
 
     % Launch simulations
@@ -142,9 +140,13 @@ for ocnmap = run_maps
     if plot_maps(ocnmap) == 1
 
         figure
-        loglog(Time/365,WH_RA(:,EE_reached_RA==1),'color','#cc2936');
+        if any(EE_reached_RA==1)
+            loglog(Time/365,WH_RA(:,EE_reached_RA==1),'color','#cc2936');
+        end
         hold on
-        loglog(Time/365,WH_RA(:,EE_reached_RA==0),'color','#08415c');
+        if any(EE_reached_RA==0)
+            loglog(Time/365,WH_RA(:,EE_reached_RA==0),'color','#08415c');
+        end
         xlim([1/10 Time(end)/365])
         ylim([1/max(setup_RA.H) max(WH_RA,[],'all')])
         ylabel('I^H')
@@ -156,13 +158,18 @@ for ocnmap = run_maps
 
 
         figure
-        loglog(Time/365,WH_DA(:,EE_reached_DA==1),'color','#cc2936');
+        if any(EE_reached_DA==1)
+            loglog(Time/365,WH_DA(:,EE_reached_DA==1),'color','#cc2936');
+        end
         hold on
-        loglog(Time/365,WH_DA(:,EE_reached_DA==0),'color','#08415c');
+        if any(EE_reached_DA==0)
+            loglog(Time/365,WH_DA(:,EE_reached_DA==0),'color','#08415c');
+        end
         xlim([1/10 Time(end)/365])
         ylim([1/max(setup_DA.H) max(WH_DA,[],'all')])
         ylabel('I^H')
         xlabel('Years')
+        set(gca,'yscale','log','xscale','log')
     
         figure
         draw_OCN(OCN,EE_reached_DA,'binary',true)
@@ -177,6 +184,20 @@ plt_DA_mean = squeeze(mean(plt_DA,3));
 p_eqi_DA_mean = squeeze(mean(p_eqi_DA,2));
 p_eqi_RA_mean = squeeze(mean(p_eqi_RA,2));
 p_eqi_UNI_mean = squeeze(mean(p_eqi_UNI,2));
+
+for ocnmap = 1:3
+        ind_cut = min([find(plt_RA(:,1,ocnmap)<0,1,'first'),...
+            find(plt_RA(:,2,ocnmap)<0,1,'first'),...
+            find(plt_RA(:,3,ocnmap)<0,1,'first'),...
+            find(plt_RA(:,4,ocnmap)<0,1,'first')]);
+        plt_RA(ind_cut:end,:,ocnmap) = NaN;
+        ind_cut = min([find(plt_DA(:,1,ocnmap)<0,1,'first'),...
+            find(plt_DA(:,2,ocnmap)<0,1,'first'),...
+            find(plt_DA(:,3,ocnmap)<0,1,'first'),...
+            find(plt_DA(:,4,ocnmap)<0,1,'first')]);
+        plt_DA(ind_cut:end,:,ocnmap) = NaN;
+end
+
 
 %%
 figure()
@@ -193,7 +214,8 @@ for ocnmap = 1:3
     plot(Time/365,ones(length(Time),1)*max(p_eqi_RA(1,ocnmap)),'--','color','#ef476f')
     plot(Time/365,ones(length(Time),1)*max(p_eqi_DA(1,ocnmap)),'--','color','#ffd166')
 end
-ylabel('I^H [w/h]')
+ylabel('I^H [worms/person]')
+set(gca,'XTick',[0.01 0.1 1 10 100])
 xlim([Time(1)/365 Time(end)/365])
 set(gca,'XTickLabel',[])
 set(gca,'XScale','log','YScale','log')
@@ -210,7 +232,8 @@ for ocnmap = 1:3
     plot(Time/365,ones(length(Time),1)*max(p_eqi_RA(2,ocnmap)),'--','color','#ef476f')
     plot(Time/365,ones(length(Time),1)*max(p_eqi_DA(2,ocnmap)),'--','color','#ffd166')
 end
-ylabel('E [e/m^3]')
+ylabel('E [eggs/m^3]')
+set(gca,'XTick',[0.01 0.1 1 10 100])
 xlim([Time(1)/365 Time(end)/365])
 set(gca,'XTickLabel',[])
 set(gca,'XScale','log','YScale','log')
@@ -227,7 +250,8 @@ for ocnmap = 1:3
     plot(Time/365,ones(length(Time),1)*max(p_eqi_RA(3,ocnmap)),'--','color','#ef476f')
     plot(Time/365,ones(length(Time),1)*max(p_eqi_DA(3,ocnmap)),'--','color','#ffd166')
 end
-ylabel('Y^S [%]')
+ylabel('Y^S')
+set(gca,'XTick',[0.01 0.1 1 10 100])
 xlim([Time(1)/365 Time(end)/365])
 set(gca,'XScale','log','YScale','log')
 box off
@@ -244,7 +268,8 @@ for ocnmap = 1:3
     plot(Time/365,ones(length(Time),1)*max(p_eqi_RA(4,ocnmap)),'--','color','#ef476f')
     plot(Time/365,ones(length(Time),1)*max(p_eqi_DA(4,ocnmap)),'--','color','#ffd166')
 end
-ylabel('I^F [m/f]')
+ylabel('I^F [cysts/fish]')
+set(gca,'XTick',[0.01 0.1 1 10 100])
 xlim([Time(1)/365 Time(end)/365])
 set(gca,'XScale','log','YScale','log')
 xlabel('Years')

@@ -5,65 +5,40 @@ function [UP,DOWN,fields] = sensitivity_analysis_EE(OCN,p,seed)
     DOWN = zeros(4,length(fields));
 
     % Run baseline
-    s = build_setup(OCN,p,33*800*1000,'seed',seed,'Unify',true);
-    bsl = max(find_EE(s.par,s.chi,s.H,s.S,s.F,s.A,s.par.theta_C,s.par.xi))';
+    s = build_setup(OCN,p,33*800*1000,'seed',seed);
+    bsl = get_equilibrium_values(s);
+
 
     for pp = 1:length(fields)
+        pp
         p.(fields{pp}) = p.(fields{pp})*1.2;
-        s = build_setup(OCN,p,33*800*1000,'seed',seed,'Unify',true);
-        tmp = max(find_EE(s.par,s.chi,s.H,s.S,s.F,s.A,s.par.theta_C,s.par.xi))';
+        s = build_setup(OCN,p,33*800*1000,'seed',seed);
+        tmp = get_equilibrium_values(s);
         UP(:,pp) = (tmp-bsl)./bsl;
         
         p.(fields{pp}) = p.(fields{pp})/1.2*0.8;
-        s = build_setup(OCN,p,33*800*1000,'seed',seed,'Unify',true);
-        tmp = max(find_EE(s.par,s.chi,s.H,s.S,s.F,s.A,s.par.theta_C,s.par.xi))';
+        s = build_setup(OCN,p,33*800*1000,'seed',seed);
+        tmp = get_equilibrium_values(s);
         DOWN(:,pp) = (tmp-bsl)./bsl;
         p.(fields{pp}) = p.(fields{pp})/0.8;
     end
 
-    %Other parameters that should be checked: beta_E, theta_C, c, xi
-    % beta_E
-    s.par.beta_E = s.par.beta_E * 1.2;
-    tmp = max(find_EE(s.par,s.chi,s.H,s.S,s.F,s.A,s.par.theta_C,s.par.xi))';
-    UP(:,end+1) = (tmp-bsl)./bsl;
-    s.par.beta_E = s.par.beta_E / 1.2*0.8;
-    tmp = max(find_EE(s.par,s.chi,s.H,s.S,s.F,s.A,s.par.theta_C,s.par.xi))';
-    DOWN(:,end+1) = (tmp-bsl)./bsl;
-    s.par.beta_E = s.par.beta_E / 0.8;
-    fields{end+1} = 'beta_E';
-
-    % theta_C
-    s.par.theta_C = s.par.theta_C * 1.2;
-    tmp = max(find_EE(s.par,s.chi,s.H,s.S,s.F,s.A,s.par.theta_C,s.par.xi))';
-    UP(:,end+1) = (tmp-bsl)./bsl;
-    s.par.theta_C = s.par.theta_C / 1.2*0.8;
-    tmp = max(find_EE(s.par,s.chi,s.H,s.S,s.F,s.A,s.par.theta_C,s.par.xi))';
-    DOWN(:,end+1) = (tmp-bsl)./bsl;
-    s.par.theta_C = s.par.theta_C / 0.8;
-    fields{end+1} = 'theta_C';
-
-    % c
-    s.chi = s.chi*1.2;
-    tmp = max(find_EE(s.par,s.chi,s.H,s.S,s.F,s.A,s.par.theta_C,s.par.xi))';
-    UP(:,end+1) = (tmp-bsl)./bsl;
-    s.chi = s.chi / 1.2*0.8;
-    tmp = max(find_EE(s.par,s.chi,s.H,s.S,s.F,s.A,s.par.theta_C,s.par.xi))';
-    DOWN(:,end+1) = (tmp-bsl)./bsl;
-    s.chi = s.chi / 0.8;
-    fields{end+1} = '\chi';
+   
 
     % xi
     s.par.xi = s.par.xi * 1.2;
-    tmp = max(find_EE(s.par,s.chi,s.H,s.S,s.F,s.A,s.par.theta_C,s.par.xi))';
+    s.par.xi(s.par.xi>1) = 1;
+    tmp = get_equilibrium_values(s);
     UP(:,end+1) = (tmp-bsl)./bsl;
+
     s.par.xi = s.par.xi / 1.2*0.8;
-    tmp = max(find_EE(s.par,s.chi,s.H,s.S,s.F,s.A,s.par.theta_C,s.par.xi))';
+    tmp = get_equilibrium_values(s);
     DOWN(:,end+1) = (tmp-bsl)./bsl;
     s.par.xi = s.par.xi / 0.8;
     fields{end+1} = '\xi';
 
 
-    taboo = ["D", "lambda_FD", "lambda_FU"];
+    taboo = ["D", "lambda_F"];
     for i = 1:length(taboo)
         tmp = find(strcmp(fields,taboo(i)));
         if ~isempty(tmp)
@@ -76,92 +51,40 @@ function [UP,DOWN,fields] = sensitivity_analysis_EE(OCN,p,seed)
 
 
     % Checking what happens with distance D
-    Time = 1:40*365;
     s = build_setup(OCN,p,33*800*1000,'seed',seed);
-    s.period = ones(length(Time),1);
-    surplus = s.sigma.*s.F;
-    
-    y0 = zeros(OCN.nNodes,4);
-    y0(surplus==max(surplus),1) = 1/s.H(surplus==max(surplus));
-    
-    y = model_ODE(Time,s.par,s,y0');
-         s.A(isnan(s.A)) = 0; s.S(isnan(s.S)) = 0; s.F(isnan(s.F)) = 0;
-    bsl = [max(y(:,1:4:end)*s.H)/sum(s.H); max(y(:,2:4:end)*s.A)/sum(s.A);...
-        max(y(:,3:4:end)*s.S)/sum(s.S); max(y(:,4:4:end)*s.F)/sum(s.F)];
+    seeding_node = find(s.sigma == max(s.sigma));
+    bsl = get_simulation_equilibrium(s,seeding_node);
 
     p.D = p.D*1.2;
     s = build_setup(OCN,p,33*800*1000,'seed',seed);
-    s.period = ones(length(Time),1);
-    y = model_ODE(Time,s.par,s,y0');
-         s.A(isnan(s.A)) = 0; s.S(isnan(s.S)) = 0; s.F(isnan(s.F)) = 0;
-    tmp = [max(y(:,1:4:end)*s.H)/sum(s.H); max(y(:,2:4:end)*s.A)/sum(s.A);...
-        max(y(:,3:4:end)*s.S)/sum(s.S); max(y(:,4:4:end)*s.F)/sum(s.F)];
+    tmp = get_simulation_equilibrium(s,seeding_node);
     UP(:,end+1) = (tmp-bsl)./bsl;
 
     p.D = p.D/1.2*0.8;
     s = build_setup(OCN,p,33*800*1000,'seed',seed);
-    s.period = ones(length(Time),1);
-    y = model_ODE(Time,s.par,s,y0');
-         s.A(isnan(s.A)) = 0; s.S(isnan(s.S)) = 0; s.F(isnan(s.F)) = 0;
-    tmp = [max(y(:,1:4:end)*s.H)/sum(s.H); max(y(:,2:4:end)*s.A)/sum(s.A);...
-        max(y(:,3:4:end)*s.S)/sum(s.S); max(y(:,4:4:end)*s.F)/sum(s.F)];
+    tmp = get_simulation_equilibrium(s,seeding_node);
     DOWN(:,end+1) = (tmp-bsl)./bsl;
     fields{end+1} = 'D';
     p.D = p.D/0.8;
 
     % Checking what happens with parameters lambda
-    s = build_setup(OCN,p,33*800*1000,'seed',seed);
-    s.period = ones(length(Time),1);
     outlet = find(OCN.SC_AccArea == max(OCN.SC_AccArea));
     seeding_node = find(OCN.distW(outlet,:)==max(OCN.distW(outlet,:)));
-    y0 = zeros(OCN.nNodes,4);
-    y0(seeding_node,1) = 1/s.H(seeding_node);
-    y = model_ODE(Time,s.par,s,y0');
-         s.A(isnan(s.A)) = 0; s.S(isnan(s.S)) = 0; s.F(isnan(s.F)) = 0;
-    bsl = [max(y(:,1:4:end)*s.H)/sum(s.H); max(y(:,2:4:end)*s.A)/sum(s.A);...
-        max(y(:,3:4:end)*s.S)/sum(s.S); max(y(:,4:4:end)*s.F)/sum(s.F)];
+    bsl = get_simulation_equilibrium(s,seeding_node);
 
-    p.lambda_FD = p.lambda_FD*1.2;
+    p.lambda_F = p.lambda_F*1.2;
     s = build_setup(OCN,p,33*800*1000,'seed',seed);
-    s.period = ones(length(Time),1);
-    y = model_ODE(Time,s.par,s,y0');
-         s.A(isnan(s.A)) = 0; s.S(isnan(s.S)) = 0; s.F(isnan(s.F)) = 0;
-    tmp = [max(y(:,1:4:end)*s.H)/sum(s.H); max(y(:,2:4:end)*s.A)/sum(s.A);...
-        max(y(:,3:4:end)*s.S)/sum(s.S); max(y(:,4:4:end)*s.F)/sum(s.F)];
+    tmp = get_simulation_equilibrium(s,seeding_node);
     UP(:,end+1) = (tmp-bsl)./bsl;
 
-    p.lambda_FD = p.lambda_FD/1.2*0.8;
+    p.lambda_F = p.lambda_F/1.2*0.8;
     s = build_setup(OCN,p,33*800*1000,'seed',seed);
-    s.period = ones(length(Time),1);
-    y = model_ODE(Time,s.par,s,y0');
-         s.A(isnan(s.A)) = 0; s.S(isnan(s.S)) = 0; s.F(isnan(s.F)) = 0;
-    tmp = [max(y(:,1:4:end)*s.H)/sum(s.H); max(y(:,2:4:end)*s.A)/sum(s.A);...
-        max(y(:,3:4:end)*s.S)/sum(s.S); max(y(:,4:4:end)*s.F)/sum(s.F)];
+    tmp = get_simulation_equilibrium(s,seeding_node);
     DOWN(:,end+1) = (tmp-bsl)./bsl;
-    p.lambda_FD = p.lambda_FD/0.8;
+    p.lambda_F = p.lambda_F/0.8;
+    fields{end+1} = 'lambda_{F}';
 
-    fields{end+1} = 'lambda_{FD}';
-
-    p.lambda_FU = p.lambda_FU*1.2;
-    s = build_setup(OCN,p,33*800*1000,'seed',seed);
-    s.period = ones(length(Time),1);
-    y = model_ODE(Time,s.par,s,y0');
-         s.A(isnan(s.A)) = 0; s.S(isnan(s.S)) = 0; s.F(isnan(s.F)) = 0;
-    tmp = [max(y(:,1:4:end)*s.H)/sum(s.H); max(y(:,2:4:end)*s.A)/sum(s.A);...
-        max(y(:,3:4:end)*s.S)/sum(s.S); max(y(:,4:4:end)*s.F)/sum(s.F)];
-    UP(:,end+1) = (tmp-bsl)./bsl;
-
-    p.lambda_FU = p.lambda_FU/1.2*0.8;
-    s = build_setup(OCN,p,33*800*1000,'seed',seed);
-    s.period = ones(length(Time),1);
-    y = model_ODE(Time,s.par,s,y0');
-         s.A(isnan(s.A)) = 0; s.S(isnan(s.S)) = 0; s.F(isnan(s.F)) = 0;
-    tmp = [max(y(:,1:4:end)*s.H)/sum(s.H); max(y(:,2:4:end)*s.A)/sum(s.A);...
-        max(y(:,3:4:end)*s.S)/sum(s.S); max(y(:,4:4:end)*s.F)/sum(s.F)];
-    DOWN(:,end+1) = (tmp-bsl)./bsl;
-    p.lambda_FU = p.lambda_FU/0.8;
-
-    fields{end+1} = 'lambda_{FU}';
+ 
 
     % Format labels for easier plotting
     fields = strrep(fields,'mu','\mu');
@@ -173,10 +96,48 @@ function [UP,DOWN,fields] = sensitivity_analysis_EE(OCN,p,seed)
     fields = strrep(fields,'beta','\beta');
     fields = strrep(fields,'dF','d_F');
     fields = strrep(fields,'dS','d_S');
+    fields = strrep(fields,'alpha','\alpha');
+    fields = strrep(fields,'epsilon0','\epsilon_0');
+    fields = strrep(fields,'c','k');
 
+end
 
-
-
-
+function out = get_equilibrium_values(setup)
+    setup.A(isnan(setup.A)) = 0; setup.S(isnan(setup.S)) = 0; setup.F(isnan(setup.F)) = 0;
    
+    eqi = zeros(setup.nNodes,4);
+    for nn = 1:setup.nNodes
+        tem = max(find_EE(setup.par,setup.H(nn), setup.S(nn), setup.A(nn),...
+            setup.chi(nn),setup.par.epsilon(nn),setup.par.theta(nn),...
+            setup.par.xi(nn),setup.T(nn,nn)));
+        if  isempty(tem) || tem(1)==0
+            eqi(nn,:)=0;
+        else
+            eqi(nn,:)=tem;
+        end
+    end
+
+    out = [eqi(:,1)'*setup.H/sum(setup.H); 
+        eqi(:,2)'*setup.A/sum(setup.A); 
+        eqi(:,3)'*setup.S/sum(setup.S);
+        eqi(:,4)'*setup.F/sum(setup.F)];
+
+end
+
+function out = get_simulation_equilibrium(setup,seeding_node)
+    Time = 1:1000*365;
+    setup.period = ones(length(Time),1);
+    
+    y0 = zeros(setup.nNodes,4);
+
+    y0(seeding_node,1) = 100/setup.H(seeding_node);
+
+    
+    y = model_ODE(Time,setup.par,setup,y0');
+    setup.A(isnan(setup.A)) = 0; setup.S(isnan(setup.S)) = 0; setup.F(isnan(setup.F)) = 0;
+    out = [(y(end,1:4:end)*setup.H)/sum(setup.H); 
+        (y(end,2:4:end)*setup.A)/sum(setup.A);...
+        (y(end,3:4:end)*setup.S)/sum(setup.S);
+        (y(end,4:4:end)*setup.F)/sum(setup.F)];
+
 end
