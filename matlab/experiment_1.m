@@ -18,7 +18,7 @@ p_eqi_DA = zeros(4,3);
 p_eqi_UNI = zeros(4,3);
 
 plot_maps = [1 0 0];
-run_maps = 1%[1 2 3];
+run_maps = 1;%[1 2 3];
 for ocnmap = run_maps
     if ocnmap == 1
         OCN = build_OCN("OCN_A.mat",30*10000*10000);
@@ -221,6 +221,7 @@ set(gca,'XTickLabel',[])
 set(gca,'XScale','log','YScale','log')
 box off
 grid minor 
+set(gca,'FontSize',9)
 
 nexttile()
 hold on
@@ -239,6 +240,7 @@ set(gca,'XTickLabel',[])
 set(gca,'XScale','log','YScale','log')
 box off
 grid minor
+set(gca,'FontSize',9)
 
 nexttile()
 hold on
@@ -257,6 +259,7 @@ set(gca,'XScale','log','YScale','log')
 box off
 grid minor 
 xlabel('Years')
+set(gca,'FontSize',9)
 
 nexttile()
 hold on
@@ -275,3 +278,4 @@ set(gca,'XScale','log','YScale','log')
 xlabel('Years')
 box off
 grid minor
+set(gca,'FontSize',9)

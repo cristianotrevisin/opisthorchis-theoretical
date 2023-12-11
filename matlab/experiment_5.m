@@ -73,4 +73,5 @@ for i = 1:4
         title('Cyst burden in fish')
     end
     xlim([-absolute, absolute])
+    set(gca,'FontSize',9)
 end

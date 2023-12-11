@@ -7,14 +7,15 @@ OCN = build_OCN("OCN_A.mat",30*10000*10000);
 par = common_parameters();
 Time = 1:500*365;
 
-
+set(0, 'defaultFigureRenderer', 'painters')
+set(groot, 'defaultFigureRenderer', 'painters')
 
 colorMap_MP = [ones(256,1)';linspace(1,0,256);linspace(1,0,256)]';
 
 
 
 lambdas = [1e-3 1e-2 1e-1];
-
+outlet_vec = []; seeding_node_vec = []; most_distant_node_vec = [];
 for ocnmap = 1:3
     if ocnmap == 1
         OCN = build_OCN("OCN_A.mat",30*10000*10000);
@@ -33,9 +34,14 @@ for ocnmap = 1:3
     
     outlet = find(OCN.SC_AccArea == max(OCN.SC_AccArea));
     seeding_node = find(OCN.distW(outlet,:)==max(OCN.distW(outlet,:)));
+    while OCN.SC_RicePaddy_Area(seeding_node)==0
+        seeding_node = find(OCN.distW(outlet,:) == max(OCN.distW(outlet,OCN.distW(outlet,:)<OCN.distW(outlet,seeding_node))));
+    end
     most_distant_node = find(OCN.distW(seeding_node,:)==max(OCN.distW(seeding_node,:)));
+    outlet_vec = [outlet_vec outlet]; seeding_node_vec = [seeding_node_vec seeding_node]; most_distant_node_vec = [most_distant_node_vec most_distant_node];
+    
 
-    for i = 1:length(lambdas)
+for i = 1:length(lambdas)
         par.lambda_F = lambdas(i);
 
         setup = build_setup(OCN,par,33*800*1000,'seed',sd);
@@ -73,7 +79,7 @@ for i = 1:3
         loglog(Time/365,squeeze(WH_MAP(i,seeding_node_vec(ocnmap),:)),'color','#29335c','LineWidth',1)
         set(gca,'XScale','log','YScale','log')
         xlim([1 Time(end)/365])
-        ylim([1e-5 5e3])
+        ylim([1e-6 5e4])
 
         set(gca,'YTick',[1e-4 1e-2 1e0 1e2])
         set(gca,'XTick',[1e0 1e1 1e2])
@@ -96,13 +102,14 @@ for i = 1:3
         elseif ocnmap == 3 && i ==3
             ylabel ('\lambda_F = 0.1 [1/day]')
         end
+        set(gca,'FontSize',9)
     end
 end
 
 
 
 %%
-Times_Plot_Map = 365*[20 30 50 100];
+Times_Plot_Map = 365*[2 5 10 20];
 OCN = build_OCN("OCN_A.mat",30*10000*10000);
 counter = 0;
 % figure
@@ -112,44 +119,14 @@ for i = 1:length(lambdas)
         %subplot(length(lambdas),length(Times_Plot_Map),counter)
         figure
         draw_OCN(OCN,squeeze(WH_1(i,:,Times_Plot_Map(j)))')
+        if j == 1
+            plot(OCN.geometry.SCX(seeding_node_vec(1))/OCN.cellsize,OCN.geometry.SCY(seeding_node_vec(1))/OCN.cellsize,'X','MarkerEdgeColor','red','MarkerSize',20)
+        end
         set(gca,'ColorScale','log')
         colormap(colorMap_MP)
        colorbar
-        clim([1e-3 1e3])
+        clim([1e-6 5e4])
+        set(gca,'FontSize',9)
     end
 end
 
-%%
-
-%%
-h = figure
-subplot(1,2,1)
-hold on
-for tt = fliplr(1:length(Times_Plot_Fig))
-    area(WH_D(:,1)/1000,exp(smoothdata(log10(WH_D(:,tt+1)),'smoothingfactor',1)),'FaceColor',colorMap_IN(tt,:),...
-        'EdgeColor','none')
-end
-set(gca,'Yscale','log')
-xlabel('Distance to first infected node [km]')
-ylabel('I^H')
-legend(num2str(fliplr(Times_Plot_Fig)'/365))
-
-ylim([1e-6 1e4])
-xlim([0 2500])
-set(gca,'fontsize',9)
-
-subplot(1,2,2)
-hold on
-for tt = fliplr(1:length(Times_Plot_Fig))
-    area(WH_U(:,1)/1000,exp(smoothdata(log10(WH_U(:,tt+1)),'smoothingfactor',1)),'FaceColor',colorMap_IN(tt,:),...
-        'EdgeColor','none')
-end
-set(gca,'Yscale','log')
-xlabel('Distance to first infected node [km]')
-ylabel('I^H')
-ylim([1e-6 1e4])
-xlim([0 2500])
-set(gca,'fontsize',9)
-
-h.Units = 'centimeters';
-h.Position = [0 0 12 4];

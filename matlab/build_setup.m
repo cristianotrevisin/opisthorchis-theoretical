@@ -47,11 +47,10 @@ function [s] = build_setup(OCN,p,TotalPopulation,varargin)
     s.H = s.H/sum(s.H)*TotalPopulation;
     
     % Fish population
-    % Scaling 0.3 to flow accumulation, and then multiplying by the catchment's
-    % area 
-    % dF is the fish density at the outlet
-    ACC_FACTOR = OCN.SC_AccArea.^0.3./max(OCN.SC_AccArea.^0.3);
-    s.F = p.dF*OCN.SC_RiverLength.*OCN.SC_RiverWidth.*ACC_FACTOR;
+
+    % dF is the fish density
+    
+    s.F = p.dF*OCN.SC_RiverLength.*OCN.SC_RiverWidth;
    
     
     % Snail population

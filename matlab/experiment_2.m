@@ -22,25 +22,60 @@ for scd = 1:length(Ds)
     setup.period = ones(length(Time),1);
     surplus = setup.sigma;
 
-    y0 = zeros(OCN.nNodes,4);
-    y0(surplus==max(surplus),1) = 100./setup.H(surplus==max(surplus));
     
+    SN = find(surplus==max(surplus));
+    
+
+    % Check if local endemic equilibrium is sustained
+    tem = max(find_EE(setup.par,setup.H(SN), setup.S(SN), setup.A(SN),...
+            setup.chi(SN),setup.par.epsilon(SN),setup.par.theta(SN),...
+            setup.par.xi(SN),setup.T(SN,SN)));
+    while  isempty(tem) || tem(1)==0
+        SN = find(surplus == max(surplus(surplus<surplus(SN))));
+        tem = max(find_EE(setup.par,setup.H(SN), setup.S(SN), setup.A(SN),...
+            setup.chi(SN),setup.par.epsilon(SN),setup.par.theta(SN),...
+            setup.par.xi(SN),setup.T(SN,SN)));
+    end
+
+    SN1=SN;
+    y0 = zeros(OCN.nNodes,4);
+    y0(SN,1) = 100./setup.H(SN);
     y = model_ODE(Time,setup.par,setup,y0');
+    lnt = size(y,1);
     if scd == length(Ds)
         H_C = setup.H;
     end
-    WH(:,:,scd,1) = y(:,1:4:end);
+    WH(1:lnt,:,scd,1) = y(:,1:4:end);
+
+    %DOWNSTREAM ACCUMULATION
 
     setup = build_setup(OCN,par,33*800*1000,'seed',sd,'DownstreamAccumulation',true);
     setup.period = ones(length(Time),1);
     surplus = setup.sigma;
 
+    SN = find(surplus==max(surplus));
+    
+    
+
+    % Check if local endemic equilibrium is sustained
+    tem = max(find_EE(setup.par,setup.H(SN), setup.S(SN), setup.A(SN),...
+            setup.chi(SN),setup.par.epsilon(SN),setup.par.theta(SN),...
+            setup.par.xi(SN),setup.T(SN,SN)));
+    while  isempty(tem) || tem(1)==0
+        SN = find(surplus == max(surplus(surplus<surplus(SN))));
+        tem = max(find_EE(setup.par,setup.H(SN), setup.S(SN), setup.A(SN),...
+            setup.chi(SN),setup.par.epsilon(SN),setup.par.theta(SN),...
+            setup.par.xi(SN),setup.T(SN,SN)));
+    end
+
+    SN2=SN;
     y0 = zeros(OCN.nNodes,4);
-    y0(surplus==max(surplus),1) = 100./setup.H(surplus==max(surplus));
+    y0(SN,1) = 100./setup.H(SN);
 
     y = model_ODE(Time,setup.par,setup,y0');
+    lnt = size(y,1);
 
-    WH(:,:,scd,2) = y(:,1:4:end);
+    WH(1:lnt,:,scd,2) = y(:,1:4:end);
 
     if scd == length(Ds)
         H_D = setup.H;
@@ -65,9 +100,13 @@ for i = 1:3
         end
         hold on
         loglog(Time/365,WH(:,:,i,j)','color',[0 0 0 .15])
-        loglog(Time/365,WH(:,surplus==max(surplus),i,j)','color','red','LineWidth',1)
+        if j == 1
+            loglog(Time/365,WH(:,SN1,i,j)','color','red','LineWidth',1)
+        elseif j == 2
+            loglog(Time/365,WH(:,SN2,i,j)','color','red','LineWidth',1)
+        end
         loglog(Time/365,WHtot,'color','k','LineWidth',1)
-        ylim([1e-8 1e4])
+        ylim([1e-6  5e4])
         xlim([1 Time(end)/365])
         set(gca,'XScale','log','YScale','log')
         set(gca,'YTick',[1e-6 1e-3 1e0 1e3])
@@ -91,13 +130,14 @@ for i = 1:3
         elseif j == 3 && i ==3
             ylabel ('D = 1000 km')
         end
+        set(gca,'FontSize',9)
     end
 end
 
 
 
 %%
-Times_Plot_Map = 365*[5 10 50 100];
+Times_Plot_Map = 365*[5 10 50];
 
 
 OCN = build_OCN("OCN_A.mat",30*10000*10000);
@@ -109,11 +149,14 @@ for d = 2
     for tt = 1:length(Times_Plot_Map)
         figure;
         draw_OCN(OCN,WH(Times_Plot_Map(tt),:,d,2)')
+        if tt == 1
+            plot(OCN.geometry.SCX(SN2)/OCN.cellsize,OCN.geometry.SCY(SN2)/OCN.cellsize,'X','MarkerEdgeColor','red','MarkerSize',20)
+        end
         set(gca,'ColorScale','log')
         colorbar
-        clim([1e-8 1e4])
+        clim([1e-6 5e4])
         colormap(colorMap_MP)
-        colorbar('off')
+        colorbar
 
     end
 end

@@ -64,15 +64,15 @@ tiledlayout(5,3)
 % elevations
 ax11 = nexttile;
 draw_OCN(OCN_A,OCN_A.FD.Z,'Borders_Color','k'); colormap(cmap_elevation); 
-clim([0 maxZ]);
+clim([0 maxZ]); colorbar('off')
 
 ax12 = nexttile;
 draw_OCN(OCN_B,OCN_B.FD.Z,'Borders_Color','k'); colormap(cmap_elevation); 
-clim([0 maxZ]);
+clim([0 maxZ]); colorbar('off')
 
 ax13 = nexttile;
 draw_OCN(OCN_C,OCN_C.FD.Z,'Borders_Color','k'); colormap(cmap_elevation); 
-clim([0 maxZ]);
+clim([0 maxZ]); colorbar('off')
 
 % human population (random)
 
@@ -167,11 +167,10 @@ clim([0 maxZ]);
 colorbar
 
 figure
-draw_OCN(OCN_A,setup_A1.F)
+draw_OCN(OCN_C,setup_C1.F)
 set(gca,'ColorScale','log')
 colormap(cmap_F)
 clim([minF maxF])
-colorbar 
 
 
 
@@ -184,7 +183,7 @@ colorMap_SP = [linspace(1, 0.45098039215686275,256);...
 purple = [0.45098039215686275,0.19607843137254902,0.5098039215686274];
 colorMap_IN = [ones(1,256); linspace(1,0,256); linspace(1,0,256)]';
 
-%% 
+
 purple = "#6A0DAD";
 close all
 for i = 1:2
@@ -205,7 +204,7 @@ for i = 1:2
                 l=line([ocn.geometry.SCX(nn)/ocn.cellsize ocn.geometry.SCX(mm)/ocn.cellsize],...
                     [ocn.geometry.SCY(nn)/ocn.cellsize ocn.geometry.SCY(mm)/ocn.cellsize],...
                     'linewidth',1);
-                l.Color=[0,0,0,(stp.T(nn,mm)/max(stp.T-diag(diag(stp.T)),[],'all')).^0.1];
+                l.Color=[0,0,0,(stp.T(nn,mm)/max(stp.T-diag(diag(stp.T)),[],'all')).^0.25];
             end
         end
     end
