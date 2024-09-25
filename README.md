@@ -19,3 +19,4 @@ This repository contains the codes used to perform the analyses present in the a
 - `calculateWRecursive.m` calculates the hydrological connectivity matrix (which guarantees a demographic equilibrium in the fish population)
 - `sensitivity_analysis_EE.m`contains the instructions for the sensitivity analysis carried out via `experiment_4.m`
 - `zipf.m` generates a Zipf-distributed human population
+- `common_parameters.m` calls a dictionary containing the common parameters of the model.
