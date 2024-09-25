@@ -171,6 +171,7 @@ draw_OCN(OCN_C,setup_C1.F)
 set(gca,'ColorScale','log')
 colormap(cmap_F)
 clim([minF maxF])
+colorbar
 
 
 
@@ -186,33 +187,49 @@ colorMap_IN = [ones(1,256); linspace(1,0,256); linspace(1,0,256)]';
 
 purple = "#6A0DAD";
 close all
-for i = 1:2
-    if i == 1
-        stp = setup_A1;
-        ocn = OCN_A;
-    elseif i == 2
-        stp = setup_A2;
-        ocn = OCN_A;
-    end
-    figure;
-    draw_OCN(ocn,NaN)
-    set(gca,'ColorScale','log')
 
-    for nn = 1:ocn.nNodes
-        for mm = 1:ocn.nNodes
-            if mm~=nn && stp.T(nn,mm)>0
-                l=line([ocn.geometry.SCX(nn)/ocn.cellsize ocn.geometry.SCX(mm)/ocn.cellsize],...
-                    [ocn.geometry.SCY(nn)/ocn.cellsize ocn.geometry.SCY(mm)/ocn.cellsize],...
-                    'linewidth',1);
-                l.Color=[0,0,0,(stp.T(nn,mm)/max(stp.T-diag(diag(stp.T)),[],'all')).^0.25];
+figure;
+tiledlayout(2,3)
+for map = 1:3
+    if map == 1
+        ocn = OCN_A;
+        stp_RA = setup_A1;
+        stp_DA = setup_A2;
+    elseif map == 2
+        ocn = OCN_B;
+        stp_RA = setup_B1;
+        stp_DA = setup_B2;
+    elseif map == 3
+        ocn = OCN_C;
+        stp_RA = setup_C1;
+        stp_DA = setup_C2;
+    end
+    for i = 1:2
+        if i == 1
+            stp = stp_RA;
+        elseif i == 2
+            stp = stp_DA;
+        end
+        nexttile
+        draw_OCN(ocn,NaN)
+        set(gca,'ColorScale','log')
+    
+        for nn = 1:ocn.nNodes
+            for mm = 1:ocn.nNodes
+                if mm~=nn && stp.T(nn,mm)>0
+                    l=line([ocn.geometry.SCX(nn)/ocn.cellsize ocn.geometry.SCX(mm)/ocn.cellsize],...
+                        [ocn.geometry.SCY(nn)/ocn.cellsize ocn.geometry.SCY(mm)/ocn.cellsize],...
+                        'linewidth',1);
+                    l.Color=[0,0,0,(stp.T(nn,mm)/max(stp.T-diag(diag(stp.T)),[],'all')).^0.25];
+                end
             end
         end
+        stp.sigma = stp.sigma/max(stp.sigma); stp.sigma(stp.sigma<=0)=NaN; 
+        stp.delta = stp.delta/max(stp.delta); stp.delta(stp.delta<=0)=NaN; 
+        scatter(ocn.geometry.SCX/ocn.cellsize,ocn.geometry.SCY/ocn.cellsize,500*stp.sigma.^0.5,'filled','MarkerFaceColor',purple)
+        hold on
+        scatter(ocn.geometry.SCX/ocn.cellsize,ocn.geometry.SCY/ocn.cellsize,500*stp.delta.^0.5,'MarkerEdgeColor',purple,'LineWidth',1)
     end
-    stp.sigma = stp.sigma/max(stp.sigma); stp.sigma(stp.sigma<=0)=NaN; 
-    stp.delta = stp.delta/max(stp.delta); stp.delta(stp.delta<=0)=NaN; 
-    scatter(ocn.geometry.SCX/ocn.cellsize,ocn.geometry.SCY/ocn.cellsize,500*stp.sigma.^0.5,'filled','MarkerFaceColor',purple)
-    hold on
-    scatter(ocn.geometry.SCX/ocn.cellsize,ocn.geometry.SCY/ocn.cellsize,500*stp.delta.^0.5,'MarkerEdgeColor',purple,'LineWidth',1)
 end
 
 

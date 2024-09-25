@@ -1,116 +1,203 @@
-% In here we want to test the effect of fish market by running a simulation
-
-
 clc; close all; clearvars;
 % read OCN
 set(0, 'defaultFigureRenderer', 'painters')
 set(groot, 'defaultFigureRenderer', 'painters')
-OCN = build_OCN("OCN_A.mat",30*10000*10000);
-% Add attributes
 
 
-%figure; draw_OCN(OCN,NaN); hold on
-%for sc = 1:OCN.nNodes; text(OCN.geometry.SCX(sc)/OCN.cellsize,OCN.geometry.SCY(sc)/OCN.cellsize,num2str(sc),'Color','k'); end;
 
 par = common_parameters();
-par.lambda_FU = 0.01; par.lambda_FD = 0.01; 
+Dvec = 5*10.^[2:0.25:6];
+Lvec = 10.^[-4:0.25:-1];
 
-setup = build_setup(OCN,par,33*800*1000,'seed',3108);
+ocnmap = 3;
+if ocnmap == 1
+        OCN = build_OCN("OCN_A.mat",30*10000*10000);
+        sd = 3108;
+    elseif ocnmap == 2
+        OCN = build_OCN("OCN_B.mat",30*10000*10000);
+        sd = 2507;
+    elseif ocnmap == 3
+        OCN = build_OCN("OCN_C.mat",30*10000*10000);
+        sd = 0808;
+end
 
-y0 = zeros(OCN.nNodes,4);
-y0(:,1) = 1./setup.H;
 
-Time = 1:50*365;
 
-%Test without seasonality
-setup.period = ones(length(Time),1);
-yNS = model_ODE(Time,setup.par,setup,y0');
-%Test with seasonality
-setup.period = 1+sin((Time'-365.25)/365.25*2*pi);
-yWS = model_ODE(Time,setup.par,setup,y0);
+for dv = 1:length(Dvec)
+    dv
+    par.D = Dvec(dv);
+    for lv = 1:length(Lvec)
+        lv
+        par.lambda_F = Lvec(lv);
 
-WHNS = yNS(:,1:4:end); WHWS = yWS(:,1:4:end);
-EENS = yNS(:,2:4:end); EEWS = yWS(:,2:4:end);
-YSNS = yNS(:,3:4:end); YSWS = yWS(:,3:4:end);
-IFNS = yNS(:,4:4:end); IFWS = yWS(:,4:4:end);
+        setup = build_setup(OCN,par,33*800*1000,'seed',sd);
+        outlet = find(OCN.SC_AccArea == max(OCN.SC_AccArea));
+        SN = find(OCN.distW(outlet,:)==max(OCN.distW(outlet,:)));
 
-setup.A(isnan(setup.A)) = 0; setup.S(isnan(setup.S))=0; setup.F(isnan(setup.F)) = 0;
-WNS = WHNS*setup.H/sum(setup.H);
-WWS = WHWS*setup.H/sum(setup.H);
+        out = get_simulation_equilibrium(setup,SN);
 
-ENS = EENS*setup.H/sum(setup.A);
-EWS = EEWS*setup.H/sum(setup.A);
+        EQ1(dv,lv) = out(end);
 
-SNS = YSNS*setup.H/sum(setup.S);
-SWS = YSWS*setup.H/sum(setup.S);
 
-FNS = IFNS*setup.H/sum(setup.F);
-FWS = IFWS*setup.H/sum(setup.F);
+        TM1(dv,lv) = find(out>0.95*out(end),1,'first')/365;
+        out1(:,dv,lv) = out;
 
-minWN = min(WHNS,[],2); minWW = min(WHWS,[],2); minWN(minWN < 0) = 1e-50;
-maxWN = max(WHNS,[],2); maxWW = min(WHWS,[],2); minWW(minWN < 0) = 1e-50;
-minEN = min(EENS,[],2); minEW = min(EEWS,[],2);
-maxEN = max(EENS,[],2); maxEW = min(EEWS,[],2);
-minSN = min(YSNS,[],2); minSW = min(YSWS,[],2);
-maxSN = max(YSNS,[],2); maxSW = min(YSWS,[],2);
-minFN = min(IFNS,[],2); minFW = min(IFWS,[],2);
-maxFN = max(IFNS,[],2); maxFW = min(IFWS,[],2);
+
+        setup = build_setup(OCN,par,33*800*1000,'seed',sd,'DownstreamAccumulation',true);
+        outlet = find(OCN.SC_AccArea == max(OCN.SC_AccArea));
+        SN = find(OCN.distW(outlet,:)==max(OCN.distW(outlet,:)));
+
+        out = get_simulation_equilibrium(setup,SN);
+
+        EQ2(dv,lv) = out(end);
+
+        
+
+        TM2(dv,lv) = find(out>0.95*out(end),1,'first')/365;
+
+        out2(:,dv,lv) = out;
+    end
+end
+
+
 %%
-close all
-figure();
-tiledlayout(2,2)
-for k = 1:4
-    nexttile
-    if k == 1
-        title('Worm burden in humans')
-        hold on
-        PLT2 = WNS;
-        PLT4 = WWS;
-        %filler(Time/365,maxWN',minWN',[0.16862745098039217 0.17647058823529413 0.25882352941176473],0.2)
-        %filler(Time/365,maxWW',minWW',[0.8509803921568627 0.01568627450980392 0.1607843137254902],0.2)
-    elseif k == 2
-        title('Egg concentration')
-        PLT1 = EENS;
-        PLT2 = ENS;
-        PLT3 = EEWS;
-        PLT4 = EWS;
-    elseif k == 3
-        title('Prevalence of infected snails')
-        PLT1 = YSNS;
-        PLT2 = SNS;
-        PLT3 = YSWS;
-        PLT4 = SWS;
-    elseif k == 4
-        title('Cyst burden in fish')
-        PLT1 = IFNS;
-        PLT2 = FNS;
-        PLT3 = IFWS;
-        PLT4 = FWS;
+MINT = min(min(TM1(:)),min(TM2(:)));
+MAXT = max(max(TM1(:)),max(TM2(:)));
+
+MINE = min(min(EQ1(:)),min(EQ2(:)));
+MAXE = max(max(EQ1(:)),max(EQ2(:)));
+
+
+
+[X, Y] = meshgrid(Dvec/1000, Lvec);
+figure
+t = tiledlayout(2,2);
+t.TileSpacing = 'compact';
+t.Padding = 'compact';
+nexttile()
+contourf(X, Y, EQ1');
+pcolor(X, Y, EQ1');
+set(gca,'XScale','log','YScale','log')
+shading interp
+clim([MINE MAXE])
+set(gca,'XTickLabel',[])
+ylabel('\lambda_F [1/day]')
+
+
+nexttile()
+contourf(X, Y, EQ2');
+pcolor(X, Y, EQ2');
+set(gca,'XScale','log','YScale','log')
+shading interp
+clim([MINE MAXE]);
+set(gca,'XTickLabel',[])
+set(gca,'YTickLabel',[])
+colorbar
+
+nexttile()
+contourf(X, Y, TM1');
+pcolor(X, Y, TM1');
+set(gca,'XScale','log','YScale','log')
+shading interp
+clim([MINT MAXT])
+ylabel('\lambda_F [1/day]')
+set(gca,'XTick',[1 10 100 1000 10000])
+xlabel('D [km]')
+
+nexttile()
+contourf(X, Y, TM2');
+pcolor(X, Y, TM2');
+set(gca,'XScale','log','YScale','log')
+shading interp
+clim([MINT MAXT])
+colorbar
+set(gca,'YTickLabel',[])
+xlabel('D [km]')
+set(gca,'XTick',[1 10 100 1000 10000])
+
+set(gcf, 'PaperUnits', 'centimeters');
+set(gcf, 'PaperSize', [17 12]);
+set(findall(gcf,'-property','FontSize'),'FontSize',9)
+%%
+function out = get_simulation_equilibrium(setup,SN)
+    Time = 1:500*365;
+    
+    y0 = zeros(setup.nNodes,4);
+
+    y0(SN,1) = 0.1;
+
+    
+    y = model_ODE_stiff(Time,setup.par,setup,y0');
+
+    out = y(:,1:3:end)*setup.H/(sum(setup.H));
+
+end
+
+
+function y = model_ODE_stiff(Time,par,setup,y0)
+
+    %node_out = find(sum(W,1)==0);
+
+    y=odemodel(par,...
+        setup.nNodes,... #number of nodes
+        setup.H,... #human population
+        setup.S,... #snail population
+        setup.F,...#carrying fish population
+        setup.T,... #caught fish trade
+        setup.A,... #local area for snails
+        setup.W,... #hydrological connectivity
+        setup.chi,...#fish catch rate
+        setup.par.xi,... #urbanization reduction of snails' exposure
+        setup.par.epsilon,... #fraction of fish consumed raw
+        setup.par.theta,... #fish infection rate
+        Time,...    
+        y0);
+
+    y(:,2:4:end) = [];
+
+        
+    %%% ODE PART
+    
+    function y = odemodel(p,nNodes,H,S,F,T,A,W,chi,xi,epsilon,theta,tspan,y0)
+        
+
+        [~,y]=ode113(@eqs,tspan,y0);
+        
+        function dy=eqs(t,y)
+
+            index_t=floor(t-tspan(1))+1;
+
+
+            dy=zeros(4*nNodes,1);
+
+            P1 = T*y(4:4:end);
+           
+
+            P4 = W*(F.*y(4:4:end))./F - sum(W,1)'.*y(4:4:end);
+
+            P4(isnan(P4)) = 0; % for reaches with zero length
+
+
+            beta_E = p.beta_E;
+            theta_C = theta;
+
+            dy(1:4:end) = P1./H.*epsilon - (p.mu_W+p.mu_H)*y(1:4:end);
+
+
+            dy(2:4:end) = xi.* p.rho_E .* H .* y(1:4:end)./(p.alpha+y(1:4:end))./A ...
+                - (p.mu_E + beta_E * S./A).*y(2:4:end);
+
+            
+            dy(3:4:end) = beta_E*(1-y(3:4:end)).*y(2:4:end) - p.mu_S*y(3:4:end);
+
+
+            dy(4:4:end) = theta_C.*y(3:4:end) + P4 - (p.mu_F+chi).*y(4:4:end);
+
+            dy(isnan(dy))=0; % 
+
+   
+        end
     end
-  
-    hold on
-    % for i = 1:OCN.nNodes
-    %     a(i) = plot(Time/365,PLT1(:,i),'linewidth',0.25);
-    %     a(i).Color = [0.16862745098039217 0.17647058823529413 0.25882352941176473 .1];
-    % end
-    plot(Time/365,PLT2,'color',[0.16862745098039217 0.17647058823529413 0.25882352941176473 1],'linewidth',1);
-    % for i = 1:OCN.nNodes
-    %     b(i) = plot(Time/365,PLT3(:,i),'linewidth',0.25);
-    %     b(i).Color = [0.8509803921568627 0.01568627450980392 0.1607843137254902 .1];
-    % end
-    plot(Time/365,PLT4,'color',[0.8509803921568627 0.01568627450980392 0.1607843137254902 1],'linewidth',1);
-    %set(gca,'Yscale','log')
-    if k == 1
-        legend('No seasonality','With seasonality','location','southeast')
-    end
-    xlabel('Years')
-    if k == 1
-        ylim([1e-20 Inf])
-    elseif k == 2
-        ylim([1e-25 Inf])
-    elseif k == 3
-        ylim([1e-30 Inf])
-    elseif k == 4
-        ylim([1e-25 Inf])
-    end
+
+    
 end

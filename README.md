@@ -23,4 +23,4 @@ This repository contains the codes used to perform the analyses present in the a
 - `common_parameters.m` calls a dictionary containing the common parameters of the model.
 
 ## Additional remarks
-- The reader may develop additional OCN maps by using the R script `generate_OCN.R` under `dataOCN`. 
+- The reader may develop additional OCN maps by using the R script `generate_OCN.R` under `dataOCN`.

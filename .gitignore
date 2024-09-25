@@ -1,1 +1,7 @@
 *.pdf
+figs/*
+matlab/calibrate/*
+matlab/bin/*
+matlab/*.mat
+.DS_Store
+*.asv

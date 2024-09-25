@@ -14,13 +14,15 @@ function y = model_ODE(Time,par,setup,y0)
         setup.par.xi,... #urbanization reduction of snails' exposure
         setup.par.epsilon,... #fraction of fish consumed raw
         setup.par.theta,... #fish infection rate
-        setup.period,...#periodic function
         Time,...    
         y0);
+
+    y(:,2:4:end) = [];
+
         
     %%% ODE PART
     
-    function y = odemodel(p,nNodes,H,S,F,T,A,W,chi,xi,epsilon,theta,period,tspan,y0)
+    function y = odemodel(p,nNodes,H,S,F,T,A,W,chi,xi,epsilon,theta,tspan,y0)
         
 
         [~,y]=ode45(@eqs,tspan,y0);
@@ -39,13 +41,11 @@ function y = model_ODE(Time,par,setup,y0)
 
             P4(isnan(P4)) = 0; % for reaches with zero length
 
-            % 
-            % beta_E = p.beta_E*period(index_t);
-            % theta_C = theta*period(index_t);
+
             beta_E = p.beta_E;
             theta_C = theta;
 
-            dy(1:4:end) = P1./H.*epsilon - (p.mu_W+p.mu_H+p.gamma)*y(1:4:end);
+            dy(1:4:end) = P1./H.*epsilon - (p.mu_W+p.mu_H)*y(1:4:end);
 
 
             dy(2:4:end) = xi.* p.rho_E .* H .* y(1:4:end)./(p.alpha+y(1:4:end))./A ...
@@ -57,7 +57,7 @@ function y = model_ODE(Time,par,setup,y0)
 
             dy(4:4:end) = theta_C.*y(3:4:end) + P4 - (p.mu_F+chi).*y(4:4:end);
 
-            dy(isnan(dy))=0; % because the volume is 0 in a few instances
+            dy(isnan(dy))=0; % 
 
    
         end

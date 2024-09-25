@@ -1,42 +1,80 @@
 function [UP,DOWN,fields] = sensitivity_analysis_EE(OCN,p,seed)
     
     fields = fieldnames(p);
-    UP = zeros(4,length(fields));
-    DOWN = zeros(4,length(fields));
+    UP = zeros(3,length(fields),3,2);
+    DOWN = zeros(3,length(fields));
+
+    f_up = [1.2 1.1 1.05];
+    f_down = [0.8 0.9 0.95];
 
     % Run baseline
-    s = build_setup(OCN,p,33*800*1000,'seed',seed);
-    bsl = get_simulation_equilibrium(s);
+    p.lambda_F = 0;
+    s1 = build_setup(OCN,p,33*800*1000,'seed',seed);
+    s1.T = diag(diag(s1.T));
+    bsl1 = get_simulation_equilibrium(s1);
+
+    s2 = build_setup(OCN,p,33*800*1000,'seed',seed,'DownstreamAccumulation',true);
+    s2.T = diag(diag(s2.T));
+    bsl2 = get_simulation_equilibrium(s2);
 
 
-    for pp = 1:length(fields)
+    for pp = 1:length(fields)-2
         pp
-        p.(fields{pp}) = p.(fields{pp})*1.2;
-        s = build_setup(OCN,p,33*800*1000,'seed',seed);
-        tmp = get_simulation_equilibrium(s);
-        UP(:,pp) = (tmp-bsl)./bsl;
         
-        p.(fields{pp}) = p.(fields{pp})/1.2*0.8;
-        s = build_setup(OCN,p,33*800*1000,'seed',seed);
-        tmp = get_simulation_equilibrium(s);
-        DOWN(:,pp) = (tmp-bsl)./bsl;
-        p.(fields{pp}) = p.(fields{pp})/0.8;
+        for fm = 1:3
+            p.(fields{pp}) = p.(fields{pp})*f_up(fm);
+            s1 = build_setup(OCN,p,33*800*1000,'seed',seed);
+            s1.T = diag(diag(s1.T));
+            tmp = get_simulation_equilibrium(s1);
+            UP(:,pp,fm,1) = (tmp-bsl1)./bsl1;
+            s2 = build_setup(OCN,p,33*800*1000,'seed',seed,'DownstreamAccumulation',true);
+            s2.T = diag(diag(s2.T));
+            tmp = get_simulation_equilibrium(s2);
+            UP(:,pp,fm,2) = (tmp-bsl2)./bsl2;
+            
+            p.(fields{pp}) = p.(fields{pp})/f_up(fm)*f_down(fm);
+            s1 = build_setup(OCN,p,33*800*1000,'seed',seed);
+            s1.T = diag(diag(s1.T));
+            tmp = get_simulation_equilibrium(s1);
+            DOWN(:,pp,fm,1) = (tmp-bsl1)./bsl1;
+            s2 = build_setup(OCN,p,33*800*1000,'seed',seed,'DownstreamAccumulation',true);
+            s2.T = diag(diag(s2.T));
+            tmp = get_simulation_equilibrium(s2);
+            DOWN(:,pp,fm,2) = (tmp-bsl2)./bsl2;
+            p.(fields{pp}) = p.(fields{pp})/f_down(fm);
+        end
     end
 
-   
+    s1 = build_setup(OCN,p,33*800*1000,'seed',seed);
+    s1.T = diag(diag(s1.T));
+    s2 = build_setup(OCN,p,33*800*1000,'seed',seed,'DownstreamAccumulation',true);
+    s2.T = diag(diag(s2.T));
+    xi_1 = s1.par.xi;
+    xi_2 = s2.par.xi;
+
+    LF = length(fields);
 
     % xi
-    s.par.xi = s.par.xi * 1.2;
-    s.par.xi(s.par.xi>1) = 1;
-    tmp = get_simulation_equilibrium(s);
-    UP(:,end+1) = (tmp-bsl)./bsl;
+    for fm = 1:3
+        s1.par.xi = xi_1 * f_up(fm);
+        s1.par.xi(s1.par.xi>1) = 1;
+        tmp = get_simulation_equilibrium(s1);
+        UP(:,LF+1,fm,1) = (tmp-bsl1)./bsl1;
+        s2.par.xi = xi_2 * f_up(fm);
+        s2.par.xi(s2.par.xi>1) = 1;
+        tmp = get_simulation_equilibrium(s2);
+        UP(:,LF+1,fm,2) = (tmp-bsl2)./bsl2;
+    
+        s1.par.xi = xi_1 * f_down(fm);
+        tmp = get_simulation_equilibrium(s1);
+        DOWN(:,LF+1,fm,1) = (tmp-bsl1)./bsl1;
+        s2.par.xi = xi_2 * f_down(fm);
+        tmp = get_simulation_equilibrium(s2);
+        DOWN(:,LF+1,fm,2) = (tmp-bsl2)./bsl2;
+        fields{LF+1} = '\xi';
+    end
 
-    s.par.xi = s.par.xi / 1.2*0.8;
-    tmp = get_simulation_equilibrium(s);
-    DOWN(:,end+1) = (tmp-bsl)./bsl;
-    s.par.xi = s.par.xi / 0.8;
-    fields{end+1} = '\xi';
-
+ 
     % Format labels for easier plotting
     fields = strrep(fields,'mu','\mu');
     fields = strrep(fields,'gamma','\gamma');
@@ -53,42 +91,19 @@ function [UP,DOWN,fields] = sensitivity_analysis_EE(OCN,p,seed)
 
 end
 
-% function out = get_equilibrium_values(setup)
-%     setup.A(isnan(setup.A)) = 0; setup.S(isnan(setup.S)) = 0; setup.F(isnan(setup.F)) = 0;
-% 
-%     eqi = zeros(setup.nNodes,4);
-%     for nn = 1:setup.nNodes
-%         tem = max(find_EE(setup.par,setup.H(nn), setup.S(nn), setup.A(nn),...
-%             setup.chi(nn),setup.par.epsilon(nn),setup.par.theta(nn),...
-%             setup.par.xi(nn),setup.T(nn,nn)));
-%         if  isempty(tem) || tem(1)==0
-%             eqi(nn,:)=0;
-%         else
-%             eqi(nn,:)=tem;
-%         end
-%     end
-% 
-%     out = [eqi(:,1)'*setup.H/sum(setup.H); 
-%         eqi(:,2)'*setup.A/sum(setup.A); 
-%         eqi(:,3)'*setup.S/sum(setup.S);
-%         eqi(:,4)'*setup.F/sum(setup.F)];
-% 
-% end
 
 function out = get_simulation_equilibrium(setup)
     Time = 1:1000*365;
-    setup.period = ones(length(Time),1);
     
     y0 = zeros(setup.nNodes,4);
 
-    y0(:,1) = 100./setup.H;
+    y0(:,1) = 0.1;
 
     
     y = model_ODE(Time,setup.par,setup,y0');
-    setup.A(isnan(setup.A)) = 0; setup.S(isnan(setup.S)) = 0; setup.F(isnan(setup.F)) = 0;
-    out = [(y(end,1:4:end)*setup.H)/sum(setup.H); 
-        (y(end,2:4:end)*setup.A)/sum(setup.A);...
-        (y(end,3:4:end)*setup.S)/sum(setup.S);
-        (y(end,4:4:end)*setup.F)/sum(setup.F)];
+    setup.S(isnan(setup.S)) = 0; setup.F(isnan(setup.F)) = 0;
+    out = [(y(end,1:3:end)*setup.H)/sum(setup.H); 
+        (y(end,2:3:end)*setup.S)/sum(setup.S);
+        (y(end,3:3:end)*setup.F)/sum(setup.F)];
 
 end

@@ -21,6 +21,7 @@ function [s] = build_setup(OCN,p,TotalPopulation,varargin)
         rng(ip.Results.seed);
     end
 
+  
     s.nNodes = OCN.nNodes;
 
     %%% LOAD PARAMETERS
@@ -40,9 +41,9 @@ function [s] = build_setup(OCN,p,TotalPopulation,varargin)
         for rank = 1:OCN.nNodes
             ID(rankacc(rank)) = rank;
         end
-        s.H = zipf(ID', 2, 250);
+        s.H = zipf(ID', 1, 250);
     else
-        s.H = zipf(randperm(OCN.nNodes), 2, 250);
+        s.H = zipf(randperm(OCN.nNodes), 1, 250);
     end
     s.H = s.H/sum(s.H)*TotalPopulation;
     
@@ -50,8 +51,10 @@ function [s] = build_setup(OCN,p,TotalPopulation,varargin)
 
     % dF is the fish density
     
-    s.F = p.dF*OCN.SC_RiverLength.*OCN.SC_RiverWidth;
+    s.F = p.dF*(OCN.SC_RiverLength.*OCN.SC_RiverWidth);
    
+    s.A = OCN.SC_RicePaddy_Area; % area for eggs
+    s.A(s.A == 0) = NaN;
     
     % Snail population
     s.S = OCN.SC_RicePaddy_Area*p.dS;
@@ -83,8 +86,7 @@ function [s] = build_setup(OCN,p,TotalPopulation,varargin)
      
     s.T = T;
      
-    s.A = OCN.SC_RicePaddy_Area; % area for eggs
-    s.A(s.A == 0) = NaN;
+   
 
 
     % Snail exposure reduction
@@ -108,10 +110,10 @@ function [s] = build_setup(OCN,p,TotalPopulation,varargin)
         % populations
         s.nNodes = 1; 
         s.W = 0;
-        s.A = sum(s.A,'omitmissing');
+        s.A = sum(s.A,'omitmissing');  
+        s.par.xi = sum(s.par.xi.*s.H,'omitmissing')/sum(s.H,'omitmissing');
+        s.par.epsilon = sum(s.par.epsilon.*s.H,'omitmissing')/sum(s.H,'omitmissing');
         s.H = sum(s.H,'omitmissing');
-        s.par.xi = sum(s.par.xi.*s.S,'omitmissing')/sum(s.S,'omitmissing');
-        s.par.epsilon = sum(s.par.epsilon.*s.F,'omitmissing')/sum(s.F,'omitmissing');
         s.S = sum(s.S,'omitmissing');
         s.F = sum(s.F,'omitmissing');
         s.par.theta = s.par.rho_C*s.par.beta_C.*s.S/s.A./(s.par.mu_C+s.par.beta_C.*s.F./s.A);

@@ -1,17 +1,17 @@
-% In here we want to test the effect of fish market by running a simulation
+%EFFECT OF FISH MOBILITY IN CONNECTED RIVER NETWORKS
 
 clc; close all; clearvars;
 
-% read OCN
-OCN = build_OCN("OCN_A.mat",30*10000*10000);
 par = common_parameters();
-Time = 1:500*365;
+Time = 1:200*365;
 
 set(0, 'defaultFigureRenderer', 'painters')
 set(groot, 'defaultFigureRenderer', 'painters')
 
 colorMap_MP = [ones(256,1)';linspace(1,0,256);linspace(1,0,256)]';
 
+% USER SHOULD SELECT WHETHER TO USE DOWNSTREAM ACCUMULATION
+downstream_accumulation=false;
 
 
 lambdas = [1e-3 1e-2 1e-1];
@@ -44,16 +44,16 @@ for ocnmap = 1:3
 for i = 1:length(lambdas)
         par.lambda_F = lambdas(i);
 
-        setup = build_setup(OCN,par,33*800*1000,'seed',sd);
+        setup = build_setup(OCN,par,33*800*1000,'seed',sd,'DownstreamAccumulation',downstream_accumulation);
         setup.T = diag(min(setup.par.U*setup.H,setup.chi.*setup.F));
         setup.period = ones(length(Time),1);
     
         y0 = zeros(OCN.nNodes,4);
-        y0(seeding_node,:) = [100/setup.H(seeding_node) 0 0 0];
+        y0(seeding_node,:) = [0.1 0 0 0];
     
         y = model_ODE(Time,setup.par,setup,y0');
     
-        WH = y(:,1:4:end)';
+        WH = y(:,1:3:end)';
         if ocnmap==1
             WH_1(i,:,:) = WH;
         elseif ocnmap == 2
@@ -67,22 +67,25 @@ end
 
 counter = 0;
 figure();
+t = tiledlayout(3,3);
+t.TileSpacing = 'compact';
+t.Padding = 'compact';
 for i = 1:3
     for ocnmap = 1:3
         counter = counter+1;
         if ocnmap == 1; WH_MAP = WH_1; elseif ocnmap == 2; WH_MAP = WH_2; else; WH_MAP = WH_3; end;
-        subplot(3,3,counter)
+        nexttile()
         hold on
         loglog(Time/365,squeeze(WH_MAP(i,:,:)),'color',[0 0 0 0.1])
-        loglog(Time/365,squeeze(WH_MAP(i,outlet_vec(ocnmap),:)),'color','#e4572e','LineWidth',1)
-        loglog(Time/365,squeeze(WH_MAP(i,most_distant_node_vec(ocnmap),:)),'color','#f3a712','LineWidth',1)
-        loglog(Time/365,squeeze(WH_MAP(i,seeding_node_vec(ocnmap),:)),'color','#29335c','LineWidth',1)
-        set(gca,'XScale','log','YScale','log')
+        loglog(Time/365,squeeze(WH_MAP(i,outlet_vec(ocnmap),:)),'color','#219ebc','LineWidth',1)
+        loglog(Time/365,squeeze(WH_MAP(i,most_distant_node_vec(ocnmap),:)),'color','#ffb703','LineWidth',1)
+        loglog(Time/365,squeeze(WH_MAP(i,seeding_node_vec(ocnmap),:)),'color','red','LineWidth',1)
+        set(gca,'YScale','log')
         xlim([1 Time(end)/365])
-        ylim([1e-6 5e4])
+        ylim([1e-6 2e2])
 
         set(gca,'YTick',[1e-4 1e-2 1e0 1e2])
-        set(gca,'XTick',[1e0 1e1 1e2])
+        %set(gca,'XTick',[1e0 1e1 1e2])
         if ocnmap > 1
             set(gca,'YTickLabel',[])
         end
@@ -105,28 +108,66 @@ for i = 1:3
         set(gca,'FontSize',9)
     end
 end
+set(gcf, 'PaperUnits', 'centimeters');
+set(gcf, 'PaperSize', [17 12]);
+set(findall(gcf,'-property','FontSize'),'FontSize',9)
 
 
-
-%%
-Times_Plot_Map = 365*[2 5 10 20];
+%% GENERATE FIGURES
+Times_Plot_Map = 365*[1 5 10 50];
 OCN = build_OCN("OCN_A.mat",30*10000*10000);
-counter = 0;
-% figure
+figure;
+t = tiledlayout(3,4);
+t.TileSpacing = 'compact';
+t.Padding = 'compact';
+set(findall(gcf,'-property','FontSize'),'FontSize',9)
 for i = 1:length(lambdas)
     for j = 1:length(Times_Plot_Map)
-        counter = counter+1;
         %subplot(length(lambdas),length(Times_Plot_Map),counter)
-        figure
+        nexttile()
         draw_OCN(OCN,squeeze(WH_1(i,:,Times_Plot_Map(j)))')
-        if j == 1
-            plot(OCN.geometry.SCX(seeding_node_vec(1))/OCN.cellsize,OCN.geometry.SCY(seeding_node_vec(1))/OCN.cellsize,'X','MarkerEdgeColor','red','MarkerSize',20)
-        end
         set(gca,'ColorScale','log')
         colormap(colorMap_MP)
-       colorbar
-        clim([1e-6 5e4])
+       %acolorbar
+        clim([1e-6 5e2])
         set(gca,'FontSize',9)
     end
 end
 
+OCN = build_OCN("OCN_B.mat",30*10000*10000);
+figure;
+t = tiledlayout(3,4);
+t.TileSpacing = 'compact';
+t.Padding = 'compact';
+set(findall(gcf,'-property','FontSize'),'FontSize',9)
+for i = 1:length(lambdas)
+    for j = 1:length(Times_Plot_Map)
+        %subplot(length(lambdas),length(Times_Plot_Map),counter)
+        nexttile()
+        draw_OCN(OCN,squeeze(WH_2(i,:,Times_Plot_Map(j)))')
+        set(gca,'ColorScale','log')
+        colormap(colorMap_MP)
+       %acolorbar
+        clim([1e-6 5e2])
+        set(gca,'FontSize',9)
+    end
+end
+
+OCN = build_OCN("OCN_C.mat",30*10000*10000);
+figure;
+t = tiledlayout(3,4);
+t.TileSpacing = 'compact';
+t.Padding = 'compact';
+set(findall(gcf,'-property','FontSize'),'FontSize',9)
+for i = 1:length(lambdas)
+    for j = 1:length(Times_Plot_Map)
+        %subplot(length(lambdas),length(Times_Plot_Map),counter)
+        nexttile()
+        draw_OCN(OCN,squeeze(WH_3(i,:,Times_Plot_Map(j)))')
+        set(gca,'ColorScale','log')
+        colormap(colorMap_MP)
+       %acolorbar
+        clim([1e-6 5e2])
+        set(gca,'FontSize',9)
+    end
+end
