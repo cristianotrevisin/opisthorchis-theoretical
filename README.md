@@ -1,3 +1,4 @@
+[![DOI](https://zenodo.org/badge/608069613.svg)](https://zenodo.org/doi/10.5281/zenodo.13841503)
 # A spatially explicit model of the dynamics of *Opisthorchis viverrini* spread by C. Trevisin et al. (2024)
 
 This repository contains the codes used to perform the analyses present in the aforementioned paper. 
