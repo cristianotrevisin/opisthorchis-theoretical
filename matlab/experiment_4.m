@@ -1,203 +1,86 @@
+% SENSITIVITY ANALYSIS
+
 clc; close all; clearvars;
 % read OCN
-set(0, 'defaultFigureRenderer', 'painters')
-set(groot, 'defaultFigureRenderer', 'painters')
+OCN_A = build_OCN("OCN_A.mat",30*10000*10000);
+OCN_B = build_OCN("OCN_B.mat",30*10000*10000);
+OCN_C = build_OCN("OCN_C.mat",30*10000*10000);
+
+par0 = common_parameters();
 
 
+[upsA, downsA, labels] = sensitivity_analysis_EE(OCN_A,par0, 3108);
+[upsB, downsB, labels_B] = sensitivity_analysis_EE(OCN_B,par0, 2507);
+[upsC, downsC, labels_C] = sensitivity_analysis_EE(OCN_C,par0, 0808);
 
-par = common_parameters();
-Dvec = 5*10.^[2:0.25:6];
-Lvec = 10.^[-4:0.25:-1];
+UP = (upsA+upsB+upsC)/3;
+DOWN = (downsA + downsB + downsC)/3;
 
-ocnmap = 3;
-if ocnmap == 1
-        OCN = build_OCN("OCN_A.mat",30*10000*10000);
-        sd = 3108;
-    elseif ocnmap == 2
-        OCN = build_OCN("OCN_B.mat",30*10000*10000);
-        sd = 2507;
-    elseif ocnmap == 3
-        OCN = build_OCN("OCN_C.mat",30*10000*10000);
-        sd = 0808;
+% Get order based on difference
+DIFF = abs(UP(1,:,1,1)-DOWN(1,:,1,1));
+[~,IDX] = sort(DIFF,'descend');
+UP_TEMP = UP;
+DOWN_TEMP = DOWN;
+fields_temp = labels;
+UP = zeros(3,length(fields_temp),3,3,2);
+DOWN = zeros(3,length(fields_temp),3,3,2);
+labels = cell(size(fields_temp));
+
+for rk = 1:length(DIFF)
+        UP(:,rk,1,:,:) = upsA(:,IDX(rk),:,:);
+        UP(:,rk,2,:,:) = upsB(:,IDX(rk),:,:);
+        UP(:,rk,3,:,:) = upsC(:,IDX(rk),:,:);
+
+        DOWN(:,rk,1,:,:) = downsA(:,IDX(rk),:,:);
+        DOWN(:,rk,2,:,:) = downsB(:,IDX(rk),:,:);
+        DOWN(:,rk,3,:,:) = downsC(:,IDX(rk),:,:);
+        labels(rk) = fields_temp(IDX(rk));
 end
 
+save("Sensitivity_Analysis_RES.mat")
 
-
-for dv = 1:length(Dvec)
-    dv
-    par.D = Dvec(dv);
-    for lv = 1:length(Lvec)
-        lv
-        par.lambda_F = Lvec(lv);
-
-        setup = build_setup(OCN,par,33*800*1000,'seed',sd);
-        outlet = find(OCN.SC_AccArea == max(OCN.SC_AccArea));
-        SN = find(OCN.distW(outlet,:)==max(OCN.distW(outlet,:)));
-
-        out = get_simulation_equilibrium(setup,SN);
-
-        EQ1(dv,lv) = out(end);
-
-
-        TM1(dv,lv) = find(out>0.95*out(end),1,'first')/365;
-        out1(:,dv,lv) = out;
-
-
-        setup = build_setup(OCN,par,33*800*1000,'seed',sd,'DownstreamAccumulation',true);
-        outlet = find(OCN.SC_AccArea == max(OCN.SC_AccArea));
-        SN = find(OCN.distW(outlet,:)==max(OCN.distW(outlet,:)));
-
-        out = get_simulation_equilibrium(setup,SN);
-
-        EQ2(dv,lv) = out(end);
-
-        
-
-        TM2(dv,lv) = find(out>0.95*out(end),1,'first')/365;
-
-        out2(:,dv,lv) = out;
-    end
-end
-
-
-%%
-MINT = min(min(TM1(:)),min(TM2(:)));
-MAXT = max(max(TM1(:)),max(TM2(:)));
-
-MINE = min(min(EQ1(:)),min(EQ2(:)));
-MAXE = max(max(EQ1(:)),max(EQ2(:)));
-
-
-
-[X, Y] = meshgrid(Dvec/1000, Lvec);
+%% GENERATE FIGURES
+UP(:,end-2:end,:,:,:) = [];
+DOWN(:,end-2:end,:,:,:) = [];
+labels(end-2:end) = [];
+lower = min(min(UP,[],'all'),min(DOWN,[],'all'))*100;
+upper = max(max(UP,[],'all'),max(DOWN,[],'all'))*100;
+absolute = max(abs(lower),abs(upper));
 figure
-t = tiledlayout(2,2);
-t.TileSpacing = 'compact';
-t.Padding = 'compact';
-nexttile()
-contourf(X, Y, EQ1');
-pcolor(X, Y, EQ1');
-set(gca,'XScale','log','YScale','log')
-shading interp
-clim([MINE MAXE])
-set(gca,'XTickLabel',[])
-ylabel('\lambda_F [1/day]')
-
-
-nexttile()
-contourf(X, Y, EQ2');
-pcolor(X, Y, EQ2');
-set(gca,'XScale','log','YScale','log')
-shading interp
-clim([MINE MAXE]);
-set(gca,'XTickLabel',[])
-set(gca,'YTickLabel',[])
-colorbar
-
-nexttile()
-contourf(X, Y, TM1');
-pcolor(X, Y, TM1');
-set(gca,'XScale','log','YScale','log')
-shading interp
-clim([MINT MAXT])
-ylabel('\lambda_F [1/day]')
-set(gca,'XTick',[1 10 100 1000 10000])
-xlabel('D [km]')
-
-nexttile()
-contourf(X, Y, TM2');
-pcolor(X, Y, TM2');
-set(gca,'XScale','log','YScale','log')
-shading interp
-clim([MINT MAXT])
-colorbar
-set(gca,'YTickLabel',[])
-xlabel('D [km]')
-set(gca,'XTick',[1 10 100 1000 10000])
-
-set(gcf, 'PaperUnits', 'centimeters');
-set(gcf, 'PaperSize', [17 12]);
-set(findall(gcf,'-property','FontSize'),'FontSize',9)
-%%
-function out = get_simulation_equilibrium(setup,SN)
-    Time = 1:500*365;
-    
-    y0 = zeros(setup.nNodes,4);
-
-    y0(SN,1) = 0.1;
-
-    
-    y = model_ODE_stiff(Time,setup.par,setup,y0');
-
-    out = y(:,1:3:end)*setup.H/(sum(setup.H));
-
-end
-
-
-function y = model_ODE_stiff(Time,par,setup,y0)
-
-    %node_out = find(sum(W,1)==0);
-
-    y=odemodel(par,...
-        setup.nNodes,... #number of nodes
-        setup.H,... #human population
-        setup.S,... #snail population
-        setup.F,...#carrying fish population
-        setup.T,... #caught fish trade
-        setup.A,... #local area for snails
-        setup.W,... #hydrological connectivity
-        setup.chi,...#fish catch rate
-        setup.par.xi,... #urbanization reduction of snails' exposure
-        setup.par.epsilon,... #fraction of fish consumed raw
-        setup.par.theta,... #fish infection rate
-        Time,...    
-        y0);
-
-    y(:,2:4:end) = [];
-
-        
-    %%% ODE PART
-    
-    function y = odemodel(p,nNodes,H,S,F,T,A,W,chi,xi,epsilon,theta,tspan,y0)
-        
-
-        [~,y]=ode113(@eqs,tspan,y0);
-        
-        function dy=eqs(t,y)
-
-            index_t=floor(t-tspan(1))+1;
-
-
-            dy=zeros(4*nNodes,1);
-
-            P1 = T*y(4:4:end);
-           
-
-            P4 = W*(F.*y(4:4:end))./F - sum(W,1)'.*y(4:4:end);
-
-            P4(isnan(P4)) = 0; % for reaches with zero length
-
-
-            beta_E = p.beta_E;
-            theta_C = theta;
-
-            dy(1:4:end) = P1./H.*epsilon - (p.mu_W+p.mu_H)*y(1:4:end);
-
-
-            dy(2:4:end) = xi.* p.rho_E .* H .* y(1:4:end)./(p.alpha+y(1:4:end))./A ...
-                - (p.mu_E + beta_E * S./A).*y(2:4:end);
-
-            
-            dy(3:4:end) = beta_E*(1-y(3:4:end)).*y(2:4:end) - p.mu_S*y(3:4:end);
-
-
-            dy(4:4:end) = theta_C.*y(3:4:end) + P4 - (p.mu_F+chi).*y(4:4:end);
-
-            dy(isnan(dy))=0; % 
-
-   
+tiledlayout(3,2)
+for i = 1:3
+    for m = 1:2
+        nexttile
+        d20 = barh(1:length(labels),squeeze(DOWN(i,:,:,1,m))*100);
+        hold on
+        d10 = barh(1:length(labels),squeeze(DOWN(i,:,:,2,m))*100);
+        d05 = barh(1:length(labels),squeeze(DOWN(i,:,:,3,m))*100);
+        for j = 1:3; d20(j).FaceColor = '#033270'; d20(j).EdgeColor = 'none'; end;
+        for j = 1:3; d10(j).FaceColor = '#1368aa'; d10(j).EdgeColor = 'none'; end;
+        for j = 1:3; d05(j).FaceColor = '#4091c9'; d05(j).EdgeColor = 'none'; end;
+        u20 = barh(1:length(labels),squeeze(UP(i,:,:,1,m))*100);
+        u10 = barh(1:length(labels),squeeze(UP(i,:,:,2,m))*100);
+        u05 = barh(1:length(labels),squeeze(UP(i,:,:,3,m))*100);
+        for j = 1:3; u20(j).FaceColor = '#65010c'; u20(j).EdgeColor = 'none'; end;
+        for j = 1:3; u10(j).FaceColor = '#cb1b16'; u10(j).EdgeColor = 'none'; end;
+        for j = 1:3; u05(j).FaceColor = '#f26a4f'; u05(j).EdgeColor = 'none'; end;
+        xlabel('[%] variation')
+        box off
+        ax = gca;
+        ax.YColor = 'w';
+        ax.YAxis.Label.Color='k';
+        yticks(1:length(labels))
+        yticklabels(labels)
+        set(gca,'FontSize',8)
+        set(gca,'YDir','reverse')
+        if i == 1
+            title('Worm burden in humans')
+        elseif i == 2
+            title ('Prevalence of infected snails')
+        else
+            title('Cyst burden in fish')
         end
+        xlim([-absolute, absolute])
+        set(gca,'FontSize',9)
     end
-
-    
 end
